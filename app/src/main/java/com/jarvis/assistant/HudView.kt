@@ -72,7 +72,7 @@ class HudView(context: Context) : View(context) {
             c.restore()
         }
 
-        fill.shader=RadialGradient(cx,cy,r*.42f,intArrayOf(Color.WHITE,ice,0xFF37CBEA.toInt(),0x0037CBEA),null,Shader.TileMode.CLAMP)
+        fill.shader=RadialGradient(cx,cy,r*.42f,intArrayOf(Color.WHITE,ice,0xFFFFB52E.toInt(),0x00FFB52E),null,Shader.TileMode.CLAMP)
         c.drawCircle(cx,cy,r*.40f,fill); fill.shader=null
         fill.color=Color.WHITE; c.drawCircle(cx,cy,r*.08f,fill)
 
