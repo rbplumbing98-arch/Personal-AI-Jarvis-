@@ -48,7 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           # GitHub secret fields can contain wrapped lines or pasted whitespace.
-          printf '%s' "$JARVIS_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --decode > "$RUNNER_TEMP/jarvis-release.jks"
+          printf '%s' "$JARVIS_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --ignore-garbage --decode > "$RUNNER_TEMP/jarvis-release.jks"
           test -s "$RUNNER_TEMP/jarvis-release.jks"
           keytool -list -keystore "$RUNNER_TEMP/jarvis-release.jks" -storepass "$JARVIS_KEYSTORE_PASSWORD" -alias "$JARVIS_KEY_ALIAS" >/dev/null
           echo "Signing keystore decoded and alias verified."
