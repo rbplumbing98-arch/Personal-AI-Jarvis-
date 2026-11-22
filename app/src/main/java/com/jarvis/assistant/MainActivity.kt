@@ -9,6 +9,8 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.text.InputType
 import android.view.Gravity
@@ -21,6 +23,8 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import java.util.Calendar
+import java.util.Date
+import java.text.SimpleDateFormat
 import java.util.Locale
 import java.net.HttpURLConnection
 import java.net.URL
@@ -35,6 +39,15 @@ class MainActivity : Activity() {
     private lateinit var you: TextView
     private lateinit var voiceStatus: TextView
     private var voice: VoiceInput? = null
+    private val uiHandler = Handler(Looper.getMainLooper())
+    private var clockView: TextView? = null
+    private var weatherView: TextView? = null
+    private val clockTick = object : Runnable {
+        override fun run() {
+            clockView?.text = SimpleDateFormat("EEEE, d MMM yyyy\\nh:mm:ss a", Locale.UK).format(Date())
+            uiHandler.postDelayed(this, 1000L)
+        }
+    }
 
     private fun px(v: Int) = (v * resources.displayMetrics.density).toInt()
 
@@ -104,11 +117,17 @@ class MainActivity : Activity() {
         indicators.addView(indicator("NETWORK", if (network) "CONNECTED" else "OFFLINE", if (network) light else Color.parseColor("#E5A33A")), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         root.addView(indicators)
 
-        val panels = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; }
-        panels.addView(panel("WEATHER", "CENTURION\nLive feed not connected"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(5), 0) })
-        panels.addView(panel("CALENDAR", "DEVICE\nNot connected"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(5), 0) })
-        panels.addView(panel("TASKS / MEMORY", store.notes().size.toString() + " SAVED NOTES\nOn-device memory"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        val panels = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        val weatherCard = panel("LIVE WEATHER • CENTURION", "Connecting to weather feed…")
+        weatherView = weatherCard.getChildAt(1) as TextView
+        panels.addView(weatherCard, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(5), 0) })
+        val timeCard = panel("PRETORIA • LOCAL TIME", "Loading local time…")
+        clockView = timeCard.getChildAt(1) as TextView
+        panels.addView(timeCard, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(5), 0) })
+        panels.addView(panel("TASKS / MEMORY", store.notes().size.toString() + " SAVED NOTES\\nOn-device memory"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         root.addView(panels)
+        clockTick.run()
+        weatherView?.let { refreshWeather(it) }
 
         voiceStatus = TextView(this).apply {
             text = if (store.elevenKey.isBlank()) "VOICE • Add your ElevenLabs key in Settings" else "VOICE • ElevenLabs configured"
@@ -241,6 +260,47 @@ class MainActivity : Activity() {
         }.start()
     }
 
+    private fun refreshWeather(target: TextView) {
+        Thread {
+            var result = "Weather feed unavailable\\nCheck your internet connection"
+            var connection: HttpURLConnection? = null
+            try {
+                val endpoint = "https://api.open-meteo.com/v1/forecast?latitude=-25.8601&longitude=28.1878&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=Africa%2FJohannesburg"
+                connection = URL(endpoint).openConnection() as HttpURLConnection
+                connection.connectTimeout = 8000
+                connection.readTimeout = 8000
+                val data = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
+                val current = data.getJSONObject("current")
+                val temperature = current.optDouble("temperature_2m")
+                val feels = current.optDouble("apparent_temperature")
+                val humidity = current.optInt("relative_humidity_2m")
+                val wind = current.optDouble("wind_speed_10m")
+                val code = current.optInt("weather_code")
+                val condition = when (code) {
+                    0 -> "Clear sky"
+                    1 -> "Mainly clear"
+                    2 -> "Partly cloudy"
+                    3 -> "Overcast"
+                    45, 48 -> "Foggy"
+                    51, 53, 55 -> "Drizzle"
+                    56, 57 -> "Freezing drizzle"
+                    61, 63, 65 -> "Rain"
+                    66, 67 -> "Freezing rain"
+                    71, 73, 75, 77 -> "Snow"
+                    80, 81, 82 -> "Rain showers"
+                    85, 86 -> "Snow showers"
+                    95, 96, 99 -> "Thunderstorms"
+                    else -> "Current conditions"
+                }
+                result = String.format(Locale.UK, "%.1f°C • %s\\nFeels %.1f°C • Humidity %d%%\\nWind %.0f km/h", temperature, condition, feels, humidity, wind)
+            } catch (_: Exception) {
+            } finally {
+                connection?.disconnect()
+            }
+            runOnUiThread { target.text = result }
+        }.start()
+    }
+
     private fun show(text: String) {
         caption.text = text
         Speaker.say(text)
@@ -353,6 +413,7 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        uiHandler.removeCallbacks(clockTick)
         voice?.stop()
         super.onDestroy()
     }
