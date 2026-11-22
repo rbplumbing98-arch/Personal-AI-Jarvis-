@@ -1,45 +1,12 @@
-# J.A.R.V.I.S. for Android
+# J.A.R.V.I.S. Android — Quantum Core
 
-An Android voice assistant with a gold holographic HUD, on-device notes/facts/taught phrases, speech output, media controls, notification access, navigation/dialler shortcuts, and a media-browser service intended for Android Auto discovery.
-
-## Current capability and limits
-
-- **Works without an AI API key:** local command routing, notes, saved facts, taught phrases, cached answers, time, navigation intents, dialler intents, and supported media-session controls.
-- **Optional online AI:** open-ended questions are sent to Anthropic only when the device has internet access and an API key is configured. API use may incur charges. This is not an offline large language model.
-- **API key storage:** the app encrypts the key with an AES-GCM key held by Android Keystore. Existing plaintext key settings are migrated on first read and removed from the old preferences.
-- **Voice recognition:** Android's installed speech recognition provider handles recognition. `EXTRA_PREFER_OFFLINE` requests offline recognition, but availability depends on the device and downloaded language packs.
-- **Spotify:** media-session controls depend on Spotify exposing an active media session. Search-to-play may open Spotify and is not guaranteed to start playback silently.
-- **Messages:** reading notifications requires the user to grant Notification Access in Android settings. Android Auto itself controls its own messaging experience.
-- **Android Auto:** this project registers a media-browser service; this alone does not guarantee approval, visibility, or every advertised action in every Android Auto/head-unit version. Real-device testing is required.
+Android voice assistant with a Quantum Core holographic hub, local notes and learned facts, voice recognition, notification reading, media controls, navigation/dialler shortcuts, optional Anthropic answers, and optional ElevenLabs speech.
 
 ## Build
+Open in Android Studio with JDK 17 and Android SDK 35, or run the GitHub Actions workflow named Build JARVIS Android APK. A successful run publishes an installable debug APK artifact named jarvis-quantum-core-debug-apk.
 
-### Android Studio
-1. Install Android Studio with Android SDK Platform 34 and JDK 17.
-2. Open this project folder.
-3. Allow Gradle to sync.
-4. Connect an Android phone with USB debugging enabled, or select Build > Build Bundle(s) / APK(s) > Build APK(s).
-5. Install the generated `app/build/outputs/apk/debug/app-debug.apk`.
+## Voice setup
+Open J.A.R.V.I.S. Settings, enter your ElevenLabs API key and voice ID, then use the voice test control when available in the app. Keep the API key private and never commit it to GitHub. ElevenLabs usage consumes account quota. Voice quality depends on the selected voice. The app currently uses the ElevenLabs multilingual v2 model with natural-delivery settings. When ElevenLabs is unavailable, Android text-to-speech is used as a fallback.
 
-### GitHub Actions
-The repository includes `.github/workflows/build.yml`. Push the project to a GitHub repository and run the workflow to build the debug APK. Download the `jarvis-debug-apk` artifact from the completed workflow.
-
-## Jarvis voice (ElevenLabs)
-Jarvis speaks with the ElevenLabs voice you chose ("Richard", voice ID `gHuiaE9IqRmy6mCWKwS0`, already filled in). To turn it on, open SETTINGS and paste your ElevenLabs API key (elevenlabs.io > profile > API keys). Speech uses your ElevenLabs credits. Each phrase is cached on the phone, so repeats cost nothing and work offline. With no key, or when a new phrase can't be fetched offline, Jarvis falls back to Android's built-in British voice.
-
-## First-run setup
-1. Open J.A.R.V.I.S. and grant microphone permission when prompted.
-2. Open SETTINGS and optionally enter your name, general area, and Anthropic API key. Do not share the key. Online AI requests can incur provider charges.
-3. Grant notification access only if you want notification reading and media-session discovery.
-4. Enable the optional read-incoming-messages setting if desired.
-
-## Example commands
-- `my name is X`, `I live in X`, `learn that <fact>`, `what have you learned`
-- `when I say X you say Y`, `forget everything`
-- `remember <note>`, `show notes`, `clear notes`
-- `play <song or artist>`, `play my usual`, `pause`, `resume`, `next`, `previous`, `what's playing`
-- `navigate to <place>`, `navigate home`, `call <number>`
-- `read my messages`, `read: <pasted text>`
-
-## Important
-All Kotlin sources compile without errors against Android API 34 with Kotlin 1.9.24 (the androidx.media classes were stubbed for that check). This source has not yet been verified on a physical Android device. Before relying on it, build with Android Studio/CI and test microphone permission, speech recognition, text-to-speech, notifications, Spotify, navigation, and Android Auto on the target phone and vehicle. No app can replace the Android Auto wake word or draw an unrestricted custom HUD over the car display.
+## Capabilities and limits
+Local commands, notes, saved facts and taught phrases work without an AI API key. Open-ended answers require an optional Anthropic API key and internet access; this is not a local large language model. Speech recognition uses the Android speech provider with en-GB locale. Offline recognition depends on installed language packs. Notification reading requires Notification Access. Media controls depend on Android media sessions. An always-on Hey J.A.R.V.I.S. wake-word engine is not yet implemented.
