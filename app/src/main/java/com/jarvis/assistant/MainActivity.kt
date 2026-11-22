@@ -20,6 +20,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import java.util.Calendar
+import java.util.Locale
 
 class MainActivity : Activity() {
     private lateinit var store: Store
@@ -228,7 +229,10 @@ class MainActivity : Activity() {
         }
         val name = field("Your name", store.name)
         val area = field("Location area", store.area)
-        val key = field("Optional Anthropic API key (online AI)", store.apiKey, true)
+        val provider = field("AI provider: anthropic or nvidia", store.aiProvider)
+        val key = field("Anthropic API key (optional)", store.apiKey, true)
+        val nvidiaKey = field("NVIDIA NIM API key", store.nvidiaApiKey, true)
+        val nvidiaModel = field("NVIDIA model ID", store.nvidiaModel)
         val elKey = field("ElevenLabs API key (Jarvis voice)", store.elevenKey, true)
         val vid = field("ElevenLabs voice ID", store.voiceId)
         val spotify = CheckBox(this).apply { text = "Use Spotify for music"; isChecked = store.useSpotify }
@@ -256,7 +260,10 @@ class MainActivity : Activity() {
             .setPositiveButton("Save") { _, _ ->
                 store.name = name.text.toString().trim()
                 store.area = area.text.toString().trim()
+                store.aiProvider = provider.text.toString().trim().lowercase(Locale.ROOT)
                 store.apiKey = key.text.toString().trim()
+                store.nvidiaApiKey = nvidiaKey.text.toString().trim()
+                store.nvidiaModel = nvidiaModel.text.toString().trim()
                 store.elevenKey = elKey.text.toString().trim()
                 store.voiceId = vid.text.toString().trim()
                 store.useSpotify = spotify.isChecked
