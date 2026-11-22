@@ -142,14 +142,15 @@ class Brain(context: Context, private val store: Store) {
         val key = q.lowercase(Locale.ROOT).replace(Regex("[^a-z0-9 ]"), "").trim()
         store.cached(key)?.let { return reply(it) }
         if (!online()) return reply("I am offline, sir. I can still use notes, what you have taught me, and my saved answers.")
-        if (store.apiKey.isBlank()) return reply("Add your Anthropic API key in settings so I can answer open questions, sir.")
+        if (store.aiProvider == "nvidia" && store.nvidiaApiKey.isBlank()) return reply("Add your NVIDIA NIM API key in settings, then select NVIDIA as the AI provider, sir.")
+        if (store.aiProvider != "nvidia" && store.apiKey.isBlank()) return reply("Add your Anthropic API key in settings so I can answer open questions, sir.")
         Thread {
             val result = try {
-                callClaude(q) to null
+                (if (store.aiProvider == "nvidia") callNvidia(q) else callClaude(q)) to null
             } catch (e: ProviderFailure) {
                 null to e.userMessage
             } catch (e: Exception) {
-                null to "I could not reach Anthropic. Please check your internet connection and try again."
+                null to "I could not reach the selected AI provider. Please check your internet connection and API settings, then try again."
             }
             main.post {
                 val out = result.first
