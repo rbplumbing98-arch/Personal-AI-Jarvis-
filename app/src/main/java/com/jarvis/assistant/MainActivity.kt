@@ -1,0 +1,200 @@
+package com.jarvis.assistant
+
+import android.Manifest
+import android.app.Activity
+import android.app.AlertDialog
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Color
+import android.os.Bundle
+import android.provider.Settings
+import android.text.InputType
+import android.view.Gravity
+import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
+import android.widget.Button
+import android.widget.CheckBox
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.Spinner
+import android.widget.ArrayAdapter
+import android.widget.TextView
+import java.util.Calendar
+
+class MainActivity : Activity() {
+    private lateinit var store: Store
+    private lateinit var brain: Brain
+    private lateinit var hud: HudView
+    private lateinit var status: TextView
+    private lateinit var caption: TextView
+    private lateinit var you: TextView
+    private var voice: VoiceInput? = null
+
+    private fun px(v: Int) = (v * resources.displayMetrics.density).toInt()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        store = Store(this)
+        brain = Brain(this, store)
+        Speaker.onInitFailed = {
+            runOnUiThread {
+                if (::caption.isInitialized) caption.text =
+                    "My voice engine did not start, sir. Install or enable Google Speech Services (text-to-speech) in Android settings, then reopen me."
+            }
+        }
+        Speaker.init(this)
+
+        val blue = Color.parseColor("#D99A24")
+        val light = Color.parseColor("#F5D58A")
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.parseColor("#04080C"))
+            setPadding(px(16), px(12), px(16), px(12))
+            fitsSystemWindows = true
+        }
+
+        val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        status = TextView(this).apply { text = "J.A.R.V.I.S.  •  ONLINE"; setTextColor(blue); textSize = 11f; letterSpacing = 0.15f }
+        top.addView(status, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        top.addView(Button(this).apply {
+            text = "SETTINGS"; textSize = 11f; setTextColor(light); setBackgroundColor(Color.TRANSPARENT)
+            setOnClickListener { openSettings() }
+        })
+        root.addView(top)
+
+        hud = HudView(this).apply { hubStyle = store.hubStyle }
+        root.addView(hud, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+
+        caption = TextView(this).apply { setTextColor(light); textSize = 16f; minLines = 2; setPadding(px(4), px(8), px(4), px(4)) }
+        you = TextView(this).apply { setTextColor(Color.parseColor("#C58A1B")); textSize = 12f; setPadding(px(4), 0, px(4), px(8)) }
+        root.addView(caption)
+        root.addView(you)
+
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        val input = EditText(this).apply {
+            hint = "Speak or type a command…"
+            setHintTextColor(Color.parseColor("#765015"))
+            setTextColor(light)
+            isSingleLine = true
+            imeOptions = EditorInfo.IME_ACTION_SEND
+            setOnEditorActionListener { v, actionId, _ ->
+                if (actionId == EditorInfo.IME_ACTION_SEND) { val t = v.text.toString(); v.text = ""; ask(t); true } else false
+            }
+        }
+        row.addView(input, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        row.addView(Button(this).apply {
+            text = "◉ MIC"; setTextColor(light); setBackgroundColor(Color.parseColor("#38270D"))
+            setOnClickListener { micTapped() }
+        }, LinearLayout.LayoutParams(px(72), px(56)))
+        root.addView(row)
+        setContentView(root)
+
+        Speaker.onState = { on ->
+            runOnUiThread { hud.mode = if (on) 2 else 0; status.text = if (on) "SPEAKING" else "ONLINE" }
+        }
+        voice = VoiceInput(
+            this,
+            { t -> runOnUiThread { ask(t) } },
+            { on -> runOnUiThread { hud.mode = if (on) 1 else 0; status.text = if (on) "LISTENING" else "ONLINE" } },
+            { msg -> runOnUiThread { show(msg) } }
+        )
+
+        val h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        val hello = if (h < 12) "Good morning" else if (h < 18) "Good afternoon" else "Good evening"
+        show("$hello, ${store.name.ifBlank { "sir" }}. All systems are online. How may I help?")
+    }
+
+    private fun show(text: String) {
+        caption.text = text
+        Speaker.say(text)
+    }
+
+    private fun ask(t: String) {
+        if (t.isBlank()) return
+        you.text = "You: $t"
+        hud.mode = 3
+        status.text = "THINKING"
+        brain.handle(t) { show(it) }
+    }
+
+    private fun micTapped() {
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1)
+        } else {
+            Speaker.stop()
+            voice?.start()
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            voice?.start()
+        } else {
+            show("I need microphone permission to hear you, sir. You can still type.")
+        }
+    }
+
+    private fun openSettings() {
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(px(20), px(8), px(20), px(8)) }
+        fun field(hint: String, value: String, secret: Boolean = false): EditText {
+            val e = EditText(this)
+            e.hint = hint
+            e.setText(value)
+            if (secret) e.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            box.addView(e)
+            return e
+        }
+        val name = field("Your name", store.name)
+        val area = field("Location area", store.area)
+        val key = field("Optional Anthropic API key (online AI)", store.apiKey, true)
+        val elKey = field("ElevenLabs API key (Jarvis voice)", store.elevenKey, true)
+        val vid = field("ElevenLabs voice ID", store.voiceId)
+        val hubLabel = TextView(this).apply {
+            text = "HUB DESIGN"
+            setTextColor(Color.parseColor("#D99A24"))
+            textSize = 12f
+            setPadding(0, px(12), 0, px(4))
+        }
+        val hubDesign = Spinner(this).apply {
+            adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item,
+                listOf("Hub 3 — Quantum Core", "Hub 4 — Holographic Orb"))
+            setSelection(if (store.hubStyle == 4) 1 else 0)
+        }
+        val spotify = CheckBox(this).apply { text = "Use Spotify for music"; isChecked = store.useSpotify }
+        val read = CheckBox(this).apply { text = "Read incoming messages aloud"; isChecked = store.readAloud }
+        val access = Button(this).apply {
+            text = "Grant notification access"
+            setOnClickListener { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
+        }
+        box.addView(hubLabel)
+        box.addView(hubDesign)
+        box.addView(spotify)
+        box.addView(read)
+        box.addView(access)
+        AlertDialog.Builder(this)
+            .setTitle("J.A.R.V.I.S. SETTINGS")
+            .setView(ScrollView(this).apply { addView(box) })
+            .setPositiveButton("Save") { _, _ ->
+                store.name = name.text.toString().trim()
+                store.area = area.text.toString().trim()
+                store.apiKey = key.text.toString().trim()
+                store.elevenKey = elKey.text.toString().trim()
+                store.voiceId = vid.text.toString().trim()
+                store.useSpotify = spotify.isChecked
+                store.readAloud = read.isChecked
+                store.hubStyle = if (hubDesign.selectedItemPosition == 1) 4 else 3
+                hud.hubStyle = store.hubStyle
+                hud.invalidate()
+                show("Settings saved, sir.")
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    override fun onDestroy() {
+        voice?.stop()
+        super.onDestroy()
+    }
+}
