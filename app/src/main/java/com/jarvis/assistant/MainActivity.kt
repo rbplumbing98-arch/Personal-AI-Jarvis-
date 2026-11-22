@@ -97,7 +97,8 @@ class MainActivity : Activity() {
             }
         }
         indicators.addView(indicator("VOICE", "READY", light), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(4), 0) })
-        val activeKeyMissing = if (store.aiProvider == "nvidia") store.nvidiaApiKey.isBlank() else store.apiKey.isBlank()\n        indicators.addView(indicator("AI CORE", if (activeKeyMissing) "KEY NEEDED" else store.aiProvider.uppercase(Locale.ROOT), if (activeKeyMissing) Color.parseColor("#E5A33A") else light), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(4), 0) })
+        val activeKeyMissing = if (store.aiProvider == "nvidia") store.nvidiaApiKey.isBlank() else store.apiKey.isBlank()
+        indicators.addView(indicator("AI CORE", if (activeKeyMissing) "KEY NEEDED" else store.aiProvider.uppercase(Locale.ROOT), if (activeKeyMissing) Color.parseColor("#E5A33A") else light), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(4), 0) })
         indicators.addView(indicator("MEMORY", "LOCAL", light), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(4), 0) })
         val network = (getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager).activeNetwork != null
         indicators.addView(indicator("NETWORK", if (network) "CONNECTED" else "OFFLINE", if (network) light else Color.parseColor("#E5A33A")), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
