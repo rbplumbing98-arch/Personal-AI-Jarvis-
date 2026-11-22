@@ -219,4 +219,40 @@ class Brain(context: Context, private val store: Store) {
             c.disconnect()
         }
     }
+
+    private fun callNvidia(q: String): String {
+        val who = store.name.ifBlank { "sir" }
+        val facts = store.facts().takeLast(15).joinToString("; ").ifBlank { "none" }
+        val system = "You are JARVIS, a calm, dry, refined British AI butler. Address the user as $who now and then. " +
+            "Reply in at most two short spoken sentences, plain text, no markdown. " +
+            "User area: ${store.area.ifBlank { "unknown" }}. Known facts: $facts."
+        val body = JSONObject().put("model", store.nvidiaModel).put("temperature", 0.6).put("max_tokens", 300).put("stream", false)
+            .put("messages", JSONArray().put(JSONObject().put("role", "system").put("content", system)).put(JSONObject().put("role", "user").put("content", q)))
+        val c = URL("https://integrate.api.nvidia.com/v1/chat/completions").openConnection() as HttpURLConnection
+        try {
+            c.requestMethod = "POST"; c.connectTimeout = 10000; c.readTimeout = 45000; c.doOutput = true
+            c.setRequestProperty("content-type", "application/json")
+            c.setRequestProperty("Authorization", "Bearer ${store.nvidiaApiKey}")
+            c.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+            val code = c.responseCode
+            if (code !in 200..299) {
+                val errorBody = try { (c.errorStream ?: c.inputStream).bufferedReader().use { it.readText() } } catch (_: Exception) { "" }
+                val detail = try { JSONObject(errorBody).optJSONObject("error")?.optString("message") ?: JSONObject(errorBody).optString("detail") } catch (_: Exception) { "" }
+                val reason = when (code) {
+                    400 -> "NVIDIA NIM rejected the request (HTTP 400). Check the model name and request."
+                    401 -> "NVIDIA rejected the API key (HTTP 401). Check your NVIDIA API Catalog key."
+                    403 -> "NVIDIA denied access (HTTP 403). Check model access and account permissions."
+                    404 -> "NVIDIA could not find this model or endpoint (HTTP 404). Check the model ID in Settings."
+                    429 -> "NVIDIA rate or usage limit reached (HTTP 429). Check your API limits."
+                    in 500..599 -> "NVIDIA NIM returned a server error (HTTP $code). Try again shortly."
+                    else -> "NVIDIA NIM returned HTTP $code."
+                }
+                throw ProviderFailure(if (detail.isNotBlank()) "$reason Details: $detail" else reason)
+            }
+            val response = JSONObject(c.inputStream.bufferedReader().use { it.readText() })
+            val answer = response.getJSONArray("choices").getJSONObject(0).getJSONObject("message").optString("content").trim()
+            if (answer.isEmpty()) throw ProviderFailure("NVIDIA connected, but returned an empty answer.")
+            return answer
+        } finally { c.disconnect() }
+    }
 }
