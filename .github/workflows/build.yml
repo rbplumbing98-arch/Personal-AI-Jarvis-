@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      JARVIS_SIGNING_CONFIGURED: ${{ env.JARVIS_SIGNING_CONFIGURED == 'true' }}
+      JARVIS_SIGNING_CONFIGURED: ${{ secrets.JARVIS_KEYSTORE_BASE64 != '' && secrets.JARVIS_KEYSTORE_PASSWORD != '' && secrets.JARVIS_KEY_ALIAS != '' && secrets.JARVIS_KEY_PASSWORD != '' }}
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
@@ -52,7 +52,7 @@ jobs:
           JARVIS_VERSION_CODE: ${{ github.run_number }}
         run: ./gradlew --no-daemon --stacktrace :app:assembleRelease
       - name: Publish JARVIS update release
-        if: ${{ success() && secrets.JARVIS_KEYSTORE_BASE64 != '' && secrets.JARVIS_KEYSTORE_PASSWORD != '' && secrets.JARVIS_KEY_ALIAS != '' && secrets.JARVIS_KEY_PASSWORD != '' }}
+        if: ${{ success() && env.JARVIS_SIGNING_CONFIGURED == 'true' }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: jarvis-build-${{ github.run_number }}
