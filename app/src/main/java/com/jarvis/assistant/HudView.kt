@@ -22,8 +22,8 @@ class HudView(context: Context) : View(context) {
     private var last = 0L
     private val line = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val cyan = Color.rgb(64, 218, 247)
-    private val ice = Color.rgb(190, 248, 255)
+    private val cyan = Color.rgb(239, 180, 67)
+    private val ice = Color.rgb(255, 232, 183)
     private val gold = Color.rgb(224, 169, 79)
     private fun dp(v: Float) = v * resources.displayMetrics.density
 
@@ -37,22 +37,22 @@ class HudView(context: Context) : View(context) {
         val cy = height*.48f
         val r = min(width*.43f, height*.39f).coerceAtLeast(dp(65f))
 
-        fill.shader = RadialGradient(cx,cy,r*1.5f,intArrayOf(0x5541D9F4,0x222B9DB9,Color.TRANSPARENT),null,Shader.TileMode.CLAMP)
+        fill.shader = RadialGradient(cx,cy,r*1.5f,intArrayOf(0x55F2B84B,0x22C58A25,Color.TRANSPARENT),null,Shader.TileMode.CLAMP)
         c.drawCircle(cx,cy,r*1.5f,fill); fill.shader = null
 
-        line.color=cyan; line.alpha=110; line.strokeWidth=dp(1f)
+        line.color=gold; line.alpha=125; line.strokeWidth=dp(1f)
         c.drawCircle(cx,cy,r*1.18f,line)
         c.save(); c.rotate(rotation,cx,cy)
         line.color=gold; line.alpha=190; line.strokeWidth=dp(2.5f)
         c.drawArc(RectF(cx-r*1.08f,cy-r*1.08f,cx+r*1.08f,cy+r*1.08f),-35f,105f,false,line)
-        line.color=cyan; line.alpha=210; line.strokeWidth=dp(2f)
+        line.color=gold; line.alpha=220; line.strokeWidth=dp(2f)
         c.drawArc(RectF(cx-r*1.08f,cy-r*1.08f,cx+r*1.08f,cy+r*1.08f),150f,75f,false,line)
         c.restore()
 
         fill.shader = RadialGradient(cx-r*.25f,cy-r*.28f,r*.95f,
             intArrayOf(0xFF1B5367.toInt(),0xFF0B2538.toInt(),0xFF030B14.toInt()),null,Shader.TileMode.CLAMP)
         c.drawCircle(cx,cy,r*.78f,fill); fill.shader=null
-        line.color=cyan; line.alpha=220; line.strokeWidth=dp(1.4f)
+        line.color=gold; line.alpha=225; line.strokeWidth=dp(1.4f)
         c.drawCircle(cx,cy,r*.78f,line)
 
         // Curved latitude lines and rotating longitude ellipses create a holographic globe.
@@ -60,12 +60,12 @@ class HudView(context: Context) : View(context) {
             val offset=i*.23f
             val y=cy+offset*r
             val half=r*.78f*kotlin.math.sqrt((1f-offset*offset).coerceAtLeast(.08f))
-            line.color=cyan; line.alpha=if(i==0) 180 else 95; line.strokeWidth=dp(1f)
+            line.color=gold; line.alpha=if(i==0) 200 else 115; line.strokeWidth=dp(1f)
             c.drawOval(RectF(cx-half,y-half*.23f,cx+half,y+half*.23f),line)
         }
         for (i in 0..3) {
             c.save(); c.rotate(rotation*(if(i%2==0) 1f else -1f)+i*45f,cx,cy)
-            line.color=if(i==0) gold else cyan; line.alpha=if(i==0) 190 else 105
+            line.color=if(i==0) gold else ice; line.alpha=if(i==0) 220 else 125
             line.strokeWidth=dp(1f)
             val w=r*(.24f+i*.12f)
             c.drawOval(RectF(cx-w,cy-r*.78f,cx+w,cy+r*.78f),line)
@@ -93,7 +93,7 @@ class HudView(context: Context) : View(context) {
             val y=base+sin((i*.3f+rotation*.08f).toDouble()).toFloat()*dp(amp)
             if(i==0) wave.moveTo(x,y) else wave.lineTo(x,y)
         }
-        line.color=cyan; line.alpha=190; line.strokeWidth=dp(1.5f); c.drawPath(wave,line)
+        line.color=gold; line.alpha=210; line.strokeWidth=dp(1.5f); c.drawPath(wave,line)
         postInvalidateOnAnimation()
     }
 }
