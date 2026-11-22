@@ -11,8 +11,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      JARVIS_SIGNING_CONFIGURED: ${{ secrets.JARVIS_KEYSTORE_BASE64 != '' && secrets.JARVIS_KEYSTORE_PASSWORD != '' && secrets.JARVIS_KEY_ALIAS != '' && secrets.JARVIS_KEY_PASSWORD != '' }}
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
@@ -26,47 +24,24 @@ jobs:
           packages: platform-tools
       - name: Install Android platform
         run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
-      - name: Build validation APK
+      - name: Build installable debug APK
         env:
           JARVIS_VERSION_CODE: ${{ github.run_number }}
         run: |
           chmod +x ./gradlew
           ./gradlew --no-daemon --stacktrace :app:assembleDebug
-      - name: Upload validation APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: jarvis-validation-debug-${{ github.run_number }}
+          name: jarvis-debug-${{ github.run_number }}
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-          retention-days: 14
-      - name: Prepare permanent signing key
-        if: ${{ env.JARVIS_SIGNING_CONFIGURED == 'true' }}
-        env:
-          JARVIS_KEYSTORE_BASE64: ${{ secrets.JARVIS_KEYSTORE_BASE64 }}
-          JARVIS_KEYSTORE_PASSWORD: ${{ secrets.JARVIS_KEYSTORE_PASSWORD }}
-          JARVIS_KEY_ALIAS: ${{ secrets.JARVIS_KEY_ALIAS }}
-        run: |
-          set -euo pipefail
-          # GitHub secret fields can contain wrapped lines or pasted whitespace.
-          printf '%s' "$JARVIS_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --ignore-garbage --decode > "$RUNNER_TEMP/jarvis-release.jks"
-          test -s "$RUNNER_TEMP/jarvis-release.jks"
-          keytool -list -keystore "$RUNNER_TEMP/jarvis-release.jks" -storepass "$JARVIS_KEYSTORE_PASSWORD" -alias "$JARVIS_KEY_ALIAS" >/dev/null
-          echo "Signing keystore decoded and alias verified."
-      - name: Build permanently signed release APK
-        if: ${{ env.JARVIS_SIGNING_CONFIGURED == 'true' }}
-        env:
-          JARVIS_KEYSTORE_PATH: ${{ runner.temp }}/jarvis-release.jks
-          JARVIS_KEYSTORE_PASSWORD: ${{ secrets.JARVIS_KEYSTORE_PASSWORD }}
-          JARVIS_KEY_ALIAS: ${{ secrets.JARVIS_KEY_ALIAS }}
-          JARVIS_KEY_PASSWORD: ${{ secrets.JARVIS_KEY_PASSWORD }}
-          JARVIS_VERSION_CODE: ${{ github.run_number }}
-        run: ./gradlew --no-daemon --stacktrace :app:assembleRelease
-      - name: Publish JARVIS update release
-        if: ${{ success() && env.JARVIS_SIGNING_CONFIGURED == 'true' }}
+          retention-days: 30
+      - name: Publish JARVIS APK
         uses: softprops/action-gh-release@v2
         with:
           tag_name: jarvis-build-${{ github.run_number }}
-          name: JARVIS update ${{ github.run_number }}
+          name: JARVIS build ${{ github.run_number }}
           generate_release_notes: true
           make_latest: true
-          files: app/build/outputs/apk/release/app-release.apk
+          files: app/build/outputs/apk/debug/app-debug.apk
