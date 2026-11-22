@@ -16,6 +16,7 @@ import java.util.Date
 import java.util.Locale
 
 class Brain(context: Context, private val store: Store) {
+    private class ProviderFailure(val userMessage: String) : Exception(userMessage)
     private val ctx = context.applicationContext
     private val main = Handler(Looper.getMainLooper())
     private val noSession =
@@ -143,10 +144,17 @@ class Brain(context: Context, private val store: Store) {
         if (!online()) return reply("I am offline, sir. I can still use notes, what you have taught me, and my saved answers.")
         if (store.apiKey.isBlank()) return reply("Add your Anthropic API key in settings so I can answer open questions, sir.")
         Thread {
-            val out = try { callClaude(q) } catch (e: Exception) { null }
+            val result = try {
+                callClaude(q) to null
+            } catch (e: ProviderFailure) {
+                null to e.userMessage
+            } catch (e: Exception) {
+                null to "I could not reach Anthropic. Please check your internet connection and try again."
+            }
             main.post {
+                val out = result.first
                 if (out == null) {
-                    reply("My reasoning core is unavailable at the moment, sir.")
+                    reply(result.second ?: "The reasoning service did not return a response.")
                 } else {
                     store.cachePut(key, out)
                     reply(out)
@@ -155,7 +163,7 @@ class Brain(context: Context, private val store: Store) {
         }.start()
     }
 
-    private fun callClaude(q: String): String? {
+    private fun callClaude(q: String): String {
         val who = store.name.ifBlank { "sir" }
         val facts = store.facts().takeLast(15).joinToString("; ").ifBlank { "none" }
         val system = "You are JARVIS, a calm, dry, refined British AI butler. Address the user as $who now and then. " +
@@ -176,7 +184,26 @@ class Brain(context: Context, private val store: Store) {
             c.setRequestProperty("x-api-key", store.apiKey)
             c.setRequestProperty("anthropic-version", "2023-06-01")
             c.outputStream.use { it.write(body.toString().toByteArray()) }
-            if (c.responseCode !in 200..299) return null
+            val code = c.responseCode
+            if (code !in 200..299) {
+                val errorBody = try {
+                    (c.errorStream ?: c.inputStream).bufferedReader().use { it.readText() }
+                } catch (_: Exception) { "" }
+                val detail = try {
+                    JSONObject(errorBody).optJSONObject("error")?.optString("message").orEmpty()
+                } catch (_: Exception) { "" }
+                val reason = when (code) {
+                    400 -> "Anthropic rejected the request (HTTP 400). The app request or selected model may need updating."
+                    401 -> "Anthropic rejected the API key (HTTP 401). Check that the key is copied correctly and belongs to your Anthropic Console account."
+                    402 -> "Anthropic reports a billing or credit problem (HTTP 402). Check billing in your Anthropic Console."
+                    403 -> "Anthropic denied access (HTTP 403). Check API access and account permissions."
+                    404 -> "Anthropic could not find the requested model (HTTP 404)."
+                    429 -> "Anthropic rate limit or usage limit reached (HTTP 429). Check your account limits and credits."
+                    in 500..599 -> "Anthropic's service returned an error (HTTP $code). Try again shortly."
+                    else -> "Anthropic returned HTTP $code."
+                }
+                throw ProviderFailure(if (detail.isNotBlank()) "$reason Details: $detail" else reason)
+            }
             val text = c.inputStream.bufferedReader().readText()
             val content = JSONObject(text).getJSONArray("content")
             val sb = StringBuilder()
@@ -184,7 +211,9 @@ class Brain(context: Context, private val store: Store) {
                 val b = content.getJSONObject(i)
                 if (b.optString("type") == "text") sb.append(b.getString("text"))
             }
-            return sb.toString().trim().ifEmpty { null }
+            return sb.toString().trim().ifEmpty {
+                throw ProviderFailure("Anthropic connected, but returned an empty answer.")
+            }
         } finally {
             c.disconnect()
         }
