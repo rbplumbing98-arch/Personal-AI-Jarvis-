@@ -95,6 +95,20 @@ class Store(context: Context) {
         set(v) {
             if (v.isBlank()) secretPrefs.edit().remove("el_key").apply() else putEncrypted("el_key", v)
         }
+    var nvidiaApiKey: String
+        get() = secretPrefs.getString("nvidia_key", null)?.let { decrypt(it) }.orEmpty()
+        set(v) {
+            if (v.isBlank()) secretPrefs.edit().remove("nvidia_key").apply() else putEncrypted("nvidia_key", v)
+        }
+
+    var aiProvider: String
+        get() = sp.getString("ai_provider", "anthropic") ?: "anthropic"
+        set(v) { sp.edit().putString("ai_provider", if (v == "nvidia") "nvidia" else "anthropic").apply() }
+
+    var nvidiaModel: String
+        get() = sp.getString("nvidia_model", "meta/llama-3.3-70b-instruct") ?: "meta/llama-3.3-70b-instruct"
+        set(v) { sp.edit().putString("nvidia_model", v.trim().ifBlank { "meta/llama-3.3-70b-instruct" }).apply() }
+
     var voiceId: String
         get() = sp.getString("voice_id", DEFAULT_VOICE)?.ifBlank { DEFAULT_VOICE } ?: DEFAULT_VOICE
         set(v) { sp.edit().putString("voice_id", v.ifBlank { DEFAULT_VOICE }).apply() }
