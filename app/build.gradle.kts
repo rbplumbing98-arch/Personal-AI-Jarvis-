@@ -9,8 +9,22 @@ android {
         applicationId = "com.jarvis.assistant"
         minSdk = 26
         targetSdk = 34
-        versionCode = 4
-        versionName = "2.2"
+        versionCode = System.getenv("JARVIS_VERSION_CODE")?.toIntOrNull() ?: 4
+        versionName = "2.2.${System.getenv("JARVIS_VERSION_CODE") ?: "4"}"
+    }
+    signingConfigs {
+        create("release") {
+            storeFile = file(System.getenv("JARVIS_KEYSTORE_PATH") ?: "missing-release-key.jks")
+            storePassword = System.getenv("JARVIS_KEYSTORE_PASSWORD") ?: ""
+            keyAlias = System.getenv("JARVIS_KEY_ALIAS") ?: ""
+            keyPassword = System.getenv("JARVIS_KEY_PASSWORD") ?: ""
+        }
+    }
+    buildTypes {
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
