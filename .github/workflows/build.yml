@@ -8,6 +8,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      JARVIS_SIGNING_CONFIGURED: ${{ env.JARVIS_SIGNING_CONFIGURED == 'true' }}
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
@@ -35,13 +37,13 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: Prepare permanent signing key
-        if: ${{ secrets.JARVIS_KEYSTORE_BASE64 != '' && secrets.JARVIS_KEYSTORE_PASSWORD != '' && secrets.JARVIS_KEY_ALIAS != '' && secrets.JARVIS_KEY_PASSWORD != '' }}
+        if: ${{ env.JARVIS_SIGNING_CONFIGURED == 'true' }}
         env:
           JARVIS_KEYSTORE_BASE64: ${{ secrets.JARVIS_KEYSTORE_BASE64 }}
         run: |
           echo "$JARVIS_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/jarvis-release.jks"
       - name: Build permanently signed release APK
-        if: ${{ secrets.JARVIS_KEYSTORE_BASE64 != '' && secrets.JARVIS_KEYSTORE_PASSWORD != '' && secrets.JARVIS_KEY_ALIAS != '' && secrets.JARVIS_KEY_PASSWORD != '' }}
+        if: ${{ env.JARVIS_SIGNING_CONFIGURED == 'true' }}
         env:
           JARVIS_KEYSTORE_PATH: ${{ runner.temp }}/jarvis-release.jks
           JARVIS_KEYSTORE_PASSWORD: ${{ secrets.JARVIS_KEYSTORE_PASSWORD }}
