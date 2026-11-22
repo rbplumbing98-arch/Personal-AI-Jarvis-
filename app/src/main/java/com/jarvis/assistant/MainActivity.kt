@@ -80,7 +80,7 @@ class MainActivity : Activity() {
             setPadding(0, px(6), 0, px(10))
         }
         fun indicator(label: String, value: String, color: Int): TextView = TextView(this).apply {
-            text = label + "\\n" + value; textSize = 9f; gravity = Gravity.CENTER
+            text = label + "\n" + value; textSize = 9f; gravity = Gravity.CENTER
             setTextColor(color); setPadding(px(5), px(7), px(5), px(7))
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#101D27")); setStroke(px(1), Color.parseColor("#244252"))
@@ -95,9 +95,9 @@ class MainActivity : Activity() {
         root.addView(indicators)
 
         val panels = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; }
-        panels.addView(panel("WEATHER", "CENTURION\\nLive feed not connected"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = px(5) })
-        panels.addView(panel("CALENDAR", "DEVICE\\nNot connected"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = px(5) })
-        panels.addView(panel("TASKS / MEMORY", store.notes().size.toString() + " SAVED NOTES\\nOn-device memory"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        panels.addView(panel("WEATHER", "CENTURION\nLive feed not connected"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = px(5) })
+        panels.addView(panel("CALENDAR", "DEVICE\nNot connected"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = px(5) })
+        panels.addView(panel("TASKS / MEMORY", store.notes().size.toString() + " SAVED NOTES\nOn-device memory"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         root.addView(panels)
 
         voiceStatus = TextView(this).apply {
