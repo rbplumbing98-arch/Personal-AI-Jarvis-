@@ -88,16 +88,16 @@ class MainActivity : Activity() {
                 cornerRadius = px(8).toFloat()
             }
         }
-        indicators.addView(indicator("VOICE", "READY", light), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = px(4) })
-        val activeKeyMissing = if (store.aiProvider == "nvidia") store.nvidiaApiKey.isBlank() else store.apiKey.isBlank()\n        indicators.addView(indicator("AI CORE", if (activeKeyMissing) "KEY NEEDED" else store.aiProvider.uppercase(Locale.ROOT), if (activeKeyMissing) Color.parseColor("#E5A33A") else light), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = px(4) })
-        indicators.addView(indicator("MEMORY", "LOCAL", light), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = px(4) })
+        indicators.addView(indicator("VOICE", "READY", light), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(4), 0) })
+        val activeKeyMissing = if (store.aiProvider == "nvidia") store.nvidiaApiKey.isBlank() else store.apiKey.isBlank()\n        indicators.addView(indicator("AI CORE", if (activeKeyMissing) "KEY NEEDED" else store.aiProvider.uppercase(Locale.ROOT), if (activeKeyMissing) Color.parseColor("#E5A33A") else light), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(4), 0) })
+        indicators.addView(indicator("MEMORY", "LOCAL", light), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(4), 0) })
         val network = (getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager).activeNetwork != null
         indicators.addView(indicator("NETWORK", if (network) "CONNECTED" else "OFFLINE", if (network) light else Color.parseColor("#E5A33A")), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         root.addView(indicators)
 
         val panels = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; }
-        panels.addView(panel("WEATHER", "CENTURION\nLive feed not connected"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = px(5) })
-        panels.addView(panel("CALENDAR", "DEVICE\nNot connected"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = px(5) })
+        panels.addView(panel("WEATHER", "CENTURION\nLive feed not connected"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(5), 0) })
+        panels.addView(panel("CALENDAR", "DEVICE\nNot connected"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(5), 0) })
         panels.addView(panel("TASKS / MEMORY", store.notes().size.toString() + " SAVED NOTES\nOn-device memory"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         root.addView(panels)
 
@@ -135,7 +135,7 @@ class MainActivity : Activity() {
                 text = label; textSize = 9f; setTextColor(light)
                 setBackgroundColor(Color.parseColor("#182A35"))
                 setOnClickListener { input.setText(prompt); input.setSelection(input.text.length); input.requestFocus() }
-            }, LinearLayout.LayoutParams(0, px(44), 1f).apply { marginEnd = px(4) })
+            }, LinearLayout.LayoutParams(0, px(44), 1f).apply { setMargins(0, 0, px(4), 0) })
         }
         quickAction("MUSIC", "play music")
         quickAction("NAV", "navigate to ")
