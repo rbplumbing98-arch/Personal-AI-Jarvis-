@@ -44,7 +44,7 @@ class MainActivity : Activity() {
     private var weatherView: TextView? = null
     private val clockTick = object : Runnable {
         override fun run() {
-            clockView?.text = SimpleDateFormat("EEEE, d MMM yyyy\\nh:mm:ss a", Locale.UK).format(Date())
+            clockView?.text = SimpleDateFormat("EEEE, d MMM yyyy\nh:mm:ss a", Locale.UK).format(Date())
             uiHandler.postDelayed(this, 1000L)
         }
     }
@@ -124,7 +124,7 @@ class MainActivity : Activity() {
         val timeCard = panel("PRETORIA • LOCAL TIME", "Loading local time…")
         clockView = timeCard.getChildAt(1) as TextView
         panels.addView(timeCard, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(5), 0) })
-        panels.addView(panel("TASKS / MEMORY", store.notes().size.toString() + " SAVED NOTES\\nOn-device memory"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        panels.addView(panel("TASKS / MEMORY", store.notes().size.toString() + " SAVED NOTES\nOn-device memory"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         root.addView(panels)
         clockTick.run()
         weatherView?.let { refreshWeather(it) }
@@ -262,7 +262,7 @@ class MainActivity : Activity() {
 
     private fun refreshWeather(target: TextView) {
         Thread {
-            var result = "Weather feed unavailable\\nCheck your internet connection"
+            var result = "Weather feed unavailable\nCheck your internet connection"
             var connection: HttpURLConnection? = null
             try {
                 val endpoint = "https://api.open-meteo.com/v1/forecast?latitude=-25.8601&longitude=28.1878&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=Africa%2FJohannesburg"
@@ -292,7 +292,7 @@ class MainActivity : Activity() {
                     95, 96, 99 -> "Thunderstorms"
                     else -> "Current conditions"
                 }
-                result = String.format(Locale.UK, "%.1f°C • %s\\nFeels %.1f°C • Humidity %d%%\\nWind %.0f km/h", temperature, condition, feels, humidity, wind)
+                result = String.format(Locale.UK, "%.1f°C • %s\nFeels %.1f°C • Humidity %d%%\nWind %.0f km/h", temperature, condition, feels, humidity, wind)
             } catch (_: Exception) {
             } finally {
                 connection?.disconnect()
