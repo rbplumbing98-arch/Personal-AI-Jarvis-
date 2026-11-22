@@ -40,8 +40,15 @@ jobs:
         if: ${{ env.JARVIS_SIGNING_CONFIGURED == 'true' }}
         env:
           JARVIS_KEYSTORE_BASE64: ${{ secrets.JARVIS_KEYSTORE_BASE64 }}
+          JARVIS_KEYSTORE_PASSWORD: ${{ secrets.JARVIS_KEYSTORE_PASSWORD }}
+          JARVIS_KEY_ALIAS: ${{ secrets.JARVIS_KEY_ALIAS }}
         run: |
-          echo "$JARVIS_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/jarvis-release.jks"
+          set -euo pipefail
+          # GitHub secret fields can contain wrapped lines or pasted whitespace.
+          printf '%s' "$JARVIS_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --decode > "$RUNNER_TEMP/jarvis-release.jks"
+          test -s "$RUNNER_TEMP/jarvis-release.jks"
+          keytool -list -keystore "$RUNNER_TEMP/jarvis-release.jks" -storepass "$JARVIS_KEYSTORE_PASSWORD" -alias "$JARVIS_KEY_ALIAS" >/dev/null
+          echo "Signing keystore decoded and alias verified."
       - name: Build permanently signed release APK
         if: ${{ env.JARVIS_SIGNING_CONFIGURED == 'true' }}
         env:
