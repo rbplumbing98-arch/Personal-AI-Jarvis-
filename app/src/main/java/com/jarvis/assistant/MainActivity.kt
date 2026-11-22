@@ -203,14 +203,15 @@ class MainActivity : Activity() {
                         }
                     }
                 }
+                val downloadUrl = apkUrl
                 runOnUiThread {
                     status.text = "ONLINE"
-                    if (latestCode > installedCode && !apkUrl.isNullOrBlank()) {
+                    if (latestCode > installedCode && !downloadUrl.isNullOrBlank()) {
                         AlertDialog.Builder(this)
                             .setTitle("J.A.R.V.I.S. update available")
                             .setMessage("A newer signed update is ready. Download it and install it over your existing JARVIS app. Your saved settings and keys should remain in place when the signing certificate matches.")
                             .setPositiveButton("Download update") { _, _ ->
-                                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(apkUrl)))
+                                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl)))
                             }
                             .setNegativeButton("Later", null)
                             .show()
