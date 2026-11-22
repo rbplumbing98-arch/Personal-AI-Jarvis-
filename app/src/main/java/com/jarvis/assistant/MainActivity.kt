@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
+import android.net.Uri
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
@@ -21,6 +22,9 @@ import android.widget.ScrollView
 import android.widget.TextView
 import java.util.Calendar
 import java.util.Locale
+import java.net.HttpURLConnection
+import java.net.URL
+import org.json.JSONObject
 
 class MainActivity : Activity() {
     private lateinit var store: Store
@@ -61,6 +65,10 @@ class MainActivity : Activity() {
         val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         status = TextView(this).apply { text = "J.A.R.V.I.S.  •  ONLINE"; setTextColor(blue); textSize = 11f; letterSpacing = 0.15f }
         top.addView(status, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        top.addView(Button(this).apply {
+            text = "UPDATE"; textSize = 11f; setTextColor(light); setBackgroundColor(Color.TRANSPARENT)
+            setOnClickListener { checkForUpdates() }
+        })
         top.addView(Button(this).apply {
             text = "SETTINGS"; textSize = 11f; setTextColor(light); setBackgroundColor(Color.TRANSPARENT)
             setOnClickListener { openSettings() }
@@ -162,6 +170,73 @@ class MainActivity : Activity() {
         val h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
         val hello = if (h < 12) "Good morning" else if (h < 18) "Good afternoon" else "Good evening"
         show("$hello, ${store.name.ifBlank { "sir" }}. All systems are online. How may I help?")
+    }
+
+    private fun checkForUpdates() {
+        status.text = "CHECKING UPDATES"
+        Thread {
+            var connection: HttpURLConnection? = null
+            try {
+                connection = URL("https://api.github.com/repos/rbplumbing98-arch/Personal-AI-Jarvis-/releases/latest")
+                    .openConnection() as HttpURLConnection
+                connection.connectTimeout = 12000
+                connection.readTimeout = 12000
+                connection.requestMethod = "GET"
+                connection.setRequestProperty("Accept", "application/vnd.github+json")
+                if (connection.responseCode != HttpURLConnection.HTTP_OK) {
+                    throw IllegalStateException("No published signed update is available yet.")
+                }
+                val release = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
+                val tag = release.optString("tag_name")
+                val releaseUrl = release.optString("html_url")
+                val latestCode = tag.substringAfterLast('-').toLongOrNull() ?: 0L
+                val installedCode = packageManager.getPackageInfo(packageName, 0).versionCode.toLong()
+                val assets = release.optJSONArray("assets")
+                var apkUrl: String? = null
+                if (assets != null) {
+                    for (i in 0 until assets.length()) {
+                        val asset = assets.getJSONObject(i)
+                        if (asset.optString("name").endsWith(".apk", ignoreCase = true)) {
+                            apkUrl = asset.optString("browser_download_url")
+                            break
+                        }
+                    }
+                }
+                runOnUiThread {
+                    status.text = "ONLINE"
+                    if (latestCode > installedCode && !apkUrl.isNullOrBlank()) {
+                        AlertDialog.Builder(this)
+                            .setTitle("J.A.R.V.I.S. update available")
+                            .setMessage("A newer signed update is ready. Download it and install it over your existing JARVIS app. Your saved settings and keys should remain in place when the signing certificate matches.")
+                            .setPositiveButton("Download update") { _, _ ->
+                                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(apkUrl)))
+                            }
+                            .setNegativeButton("Later", null)
+                            .show()
+                    } else {
+                        AlertDialog.Builder(this)
+                            .setTitle("J.A.R.V.I.S. updates")
+                            .setMessage(if (latestCode > 0L) "You are running the latest published update." else "No signed update has been published yet.")
+                            .setPositiveButton("OK", null)
+                            .setNeutralButton("Release page") { _, _ ->
+                                if (releaseUrl.isNotBlank()) startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(releaseUrl)))
+                            }
+                            .show()
+                    }
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    status.text = "ONLINE"
+                    AlertDialog.Builder(this)
+                        .setTitle("Update check unavailable")
+                        .setMessage(e.message ?: "Please try again later.")
+                        .setPositiveButton("OK", null)
+                        .show()
+                }
+            } finally {
+                connection?.disconnect()
+            }
+        }.start()
     }
 
     private fun show(text: String) {
