@@ -6,6 +6,7 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.provider.Settings
 import android.text.InputType
@@ -66,7 +67,38 @@ class MainActivity : Activity() {
         root.addView(top)
 
         hud = HudView(this)
-        root.addView(hud, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        val hubLabel = TextView(this).apply {
+            text = "QUANTUM CORE  /  3D HOLOGRAPHIC INTERFACE"
+            setTextColor(Color.parseColor("#69DDF4")); textSize = 9f; letterSpacing = 0.18f
+            gravity = Gravity.CENTER; setPadding(0, px(10), 0, px(2))
+        }
+        root.addView(hubLabel)
+        root.addView(hud, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(270)))
+
+        val indicators = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER
+            setPadding(0, px(6), 0, px(10))
+        }
+        fun indicator(label: String, value: String, color: Int): TextView = TextView(this).apply {
+            text = label + "\\n" + value; textSize = 9f; gravity = Gravity.CENTER
+            setTextColor(color); setPadding(px(5), px(7), px(5), px(7))
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#101D27")); setStroke(px(1), Color.parseColor("#244252"))
+                cornerRadius = px(8).toFloat()
+            }
+        }
+        indicators.addView(indicator("VOICE", "READY", light), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = px(4) })
+        indicators.addView(indicator("AI CORE", if (store.apiKey.isBlank()) "KEY NEEDED" else "KEY SAVED", if (store.apiKey.isBlank()) Color.parseColor("#E5A33A") else light), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = px(4) })
+        indicators.addView(indicator("MEMORY", "LOCAL", light), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = px(4) })
+        val network = (getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager).activeNetwork != null
+        indicators.addView(indicator("NETWORK", if (network) "CONNECTED" else "OFFLINE", if (network) light else Color.parseColor("#E5A33A")), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        root.addView(indicators)
+
+        val panels = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; }
+        panels.addView(panel("WEATHER", "CENTURION\\nLive feed not connected"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = px(5) })
+        panels.addView(panel("CALENDAR", "DEVICE\\nNot connected"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = px(5) })
+        panels.addView(panel("TASKS / MEMORY", store.notes().size.toString() + " SAVED NOTES\\nOn-device memory"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        root.addView(panels)
 
         voiceStatus = TextView(this).apply {
             text = if (store.elevenKey.isBlank()) "VOICE • Add your ElevenLabs key in Settings" else "VOICE • ElevenLabs configured"
@@ -95,7 +127,26 @@ class MainActivity : Activity() {
             setOnClickListener { micTapped() }
         }, LinearLayout.LayoutParams(px(72), px(56)))
         root.addView(row)
-        setContentView(root)
+
+        val quick = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, px(8), 0, px(8)) }
+        fun quickAction(label: String, prompt: String) {
+            quick.addView(Button(this).apply {
+                text = label; textSize = 9f; setTextColor(light)
+                setBackgroundColor(Color.parseColor("#182A35"))
+                setOnClickListener { input.setText(prompt); input.setSelection(input.text.length); input.requestFocus() }
+            }, LinearLayout.LayoutParams(0, px(44), 1f).apply { marginEnd = px(4) })
+        }
+        quickAction("MUSIC", "play music")
+        quickAction("NAV", "navigate to ")
+        quickAction("REMIND", "remind me to ")
+        quickAction("CALL", "call ")
+        root.addView(quick)
+
+        setContentView(ScrollView(this).apply {
+            isFillViewport = true
+            setBackgroundColor(Color.parseColor("#04080C"))
+            addView(root)
+        })
 
         Speaker.onState = { on ->
             runOnUiThread { hud.mode = if (on) 2 else 0; status.text = if (on) "SPEAKING" else "ONLINE" }
@@ -141,6 +192,28 @@ class MainActivity : Activity() {
         } else {
             show("I need microphone permission to hear you, sir. You can still type.")
         }
+    }
+
+
+    private fun panel(title: String, body: String): LinearLayout {
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(px(9), px(10), px(7), px(10))
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#0B1721"))
+                setStroke(px(1), Color.parseColor("#294452"))
+                cornerRadius = px(10).toFloat()
+            }
+        }
+        card.addView(TextView(this).apply {
+            text = title; textSize = 9f; letterSpacing = 0.08f
+            setTextColor(Color.parseColor("#E2B65F"))
+        })
+        card.addView(TextView(this).apply {
+            text = body; textSize = 10f; setTextColor(Color.parseColor("#B6C9D2"))
+            setPadding(0, px(6), 0, 0)
+        })
+        return card
     }
 
     private fun openSettings() {
