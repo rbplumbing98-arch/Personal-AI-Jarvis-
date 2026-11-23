@@ -122,13 +122,16 @@ class MainActivity : Activity() {
                 cornerRadius = px(8).toFloat()
             }
         }
-        indicators.addView(indicator("VOICE", "READY", light),
+        val voiceLabel = if (store.elevenKey.isNotBlank()) "ELEVEN READY" else "ANDROID TTS"
+        indicators.addView(indicator("VOICE", voiceLabel, light),
             LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(5), 0) })
         val localReady = LocalAi.hasModel(this)
+        val onlineReady = store.nvidiaApiKey.isNotBlank() || store.apiKey.isNotBlank()
         val activeKeyMissing = if (store.aiProvider == "nvidia") store.nvidiaApiKey.isBlank()
-            else if (store.aiProvider == "anthropic") store.apiKey.isBlank() else !localReady
-        val aiLabel = if (store.aiProvider == "local") if (localReady) "LOCAL READY" else "MODEL NEEDED"
-            else store.aiProvider.uppercase(Locale.ROOT)
+            else if (store.aiProvider == "anthropic") store.apiKey.isBlank() else !localReady && !onlineReady
+        val aiLabel = if (store.aiProvider == "local") {
+            if (localReady) "LOCAL READY" else if (onlineReady) "ONLINE BACKUP" else "MODEL NEEDED"
+        } else store.aiProvider.uppercase(Locale.ROOT)
         indicators.addView(indicator("AI CORE", aiLabel, if (activeKeyMissing) Color.parseColor("#E5A33A") else light),
             LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(5), 0) })
         val network = (getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager).activeNetwork != null
@@ -234,8 +237,9 @@ class MainActivity : Activity() {
 
 
     private fun showControlMenu() {
-        val items = arrayOf("AI Models", "Memory", "Music & Spotify", "Voice settings",
-            "General settings", "Diagnostics", "Connections", "System tools", "Check for updates")
+        val items = arrayOf("AI Models", "Memory Centre", "Music & Spotify", "Voice settings",
+            "General settings", "Diagnostics", "Connections", "System tools", "Check for updates",
+            "Clear conversation context")
         AlertDialog.Builder(this)
             .setTitle("J.A.R.V.I.S.  /  CONTROL MENU")
             .setItems(items) { _, which ->
@@ -247,9 +251,22 @@ class MainActivity : Activity() {
                     5 -> showDiagnostics()
                     7 -> startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
                     8 -> checkForUpdates()
+                    9 -> clearConversationContext()
                 }
             }
             .setNegativeButton("CLOSE", null).show()
+    }
+
+    private fun clearConversationContext() {
+        AlertDialog.Builder(this)
+            .setTitle("CLEAR CONVERSATION CONTEXT?")
+            .setMessage("This clears JARVIS's recent chat history and response cache. Saved Memory Centre entries, API keys, voice settings and other app data will remain.")
+            .setPositiveButton("CLEAR") { _, _ ->
+                store.clearConversation()
+                show("Recent conversation context cleared. Your saved memories remain intact.")
+            }
+            .setNegativeButton("KEEP", null)
+            .show()
     }
 
     private fun openMemoryManager() {
@@ -310,7 +327,7 @@ class MainActivity : Activity() {
         val model = if (LocalAi.hasModel(this)) "Installed" else "Not installed"
         val provider = store.aiProvider.uppercase(Locale.ROOT)
         val voiceEngine = if (store.elevenKey.isBlank()) "Android fallback" else "ElevenLabs configured"
-        val details = "AI mode: $provider\nOffline GGUF: $model\nNetwork: ${if (network) "Connected" else "Offline"}\nVoice: $voiceEngine\nSaved notes: ${store.notes().size}"
+        val details = "AI mode: $provider\nOffline GGUF: $model\nNetwork: ${if (network) "Connected" else "Offline"}\nVoice: $voiceEngine\nMemory entries: ${store.memories().size}\nRecent chat turns: ${store.conversation().size}"
         AlertDialog.Builder(this).setTitle("SYSTEM DIAGNOSTICS").setMessage(details)
             .setPositiveButton("CLOSE", null).setNeutralButton("SETTINGS") { _, _ -> openSettings() }.show()
     }
