@@ -49,6 +49,7 @@ class MainActivity : Activity() {
         }
     }
 
+    private val MODEL_PICK_REQUEST = 702
     private fun px(v: Int) = (v * resources.displayMetrics.density).toInt()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -83,6 +84,10 @@ class MainActivity : Activity() {
             setOnClickListener { checkForUpdates() }
         })
         top.addView(Button(this).apply {
+            text = "MODELS"; textSize = 11f; setTextColor(light); setBackgroundColor(Color.TRANSPARENT)
+            setOnClickListener { openModelManager() }
+        })
+        top.addView(Button(this).apply {
             text = "SETTINGS"; textSize = 11f; setTextColor(light); setBackgroundColor(Color.TRANSPARENT)
             setOnClickListener { openSettings() }
         })
@@ -110,8 +115,10 @@ class MainActivity : Activity() {
             }
         }
         indicators.addView(indicator("VOICE", "READY", light), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(4), 0) })
-        val activeKeyMissing = if (store.aiProvider == "nvidia") store.nvidiaApiKey.isBlank() else store.apiKey.isBlank()
-        indicators.addView(indicator("AI CORE", if (activeKeyMissing) "KEY NEEDED" else store.aiProvider.uppercase(Locale.ROOT), if (activeKeyMissing) Color.parseColor("#E5A33A") else light), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(4), 0) })
+        val localReady = LocalAi.hasModel(this)
+        val activeKeyMissing = if (store.aiProvider == "nvidia") store.nvidiaApiKey.isBlank() else if (store.aiProvider == "anthropic") store.apiKey.isBlank() else !localReady
+        val aiLabel = if (store.aiProvider == "local") if (localReady) "LOCAL READY" else "MODEL NEEDED" else store.aiProvider.uppercase(Locale.ROOT)
+        indicators.addView(indicator("AI CORE", aiLabel, if (activeKeyMissing) Color.parseColor("#E5A33A") else light), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(4), 0) })
         indicators.addView(indicator("MEMORY", "LOCAL", light), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(4), 0) })
         val network = (getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager).activeNetwork != null
         indicators.addView(indicator("NETWORK", if (network) "CONNECTED" else "OFFLINE", if (network) light else Color.parseColor("#E5A33A")), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
@@ -354,6 +361,61 @@ class MainActivity : Activity() {
         return card
     }
 
+    private fun openModelManager() {
+        val ready = LocalAi.hasModel(this)
+        val message = if (ready) {
+            "OFFLINE BRAIN READY\\nQwen 0.5B GGUF is installed on this phone. JARVIS can answer without internet or API keys.\\n\\nYou can also import another compatible .gguf model."
+        } else {
+            "OFFLINE BRAIN NOT INSTALLED\\nDownload the recommended Qwen 0.5B GGUF model (${LocalAi.MODEL_SIZE_LABEL}) over Wi-Fi, or import a GGUF file you already have.\\n\\nThe model is stored privately on this phone and is not included in app updates."
+        }
+        AlertDialog.Builder(this)
+            .setTitle("J.A.R.V.I.S. • LOCAL AI MODELS")
+            .setMessage(message)
+            .setPositiveButton(if (ready) "MODEL INSTALLED" else "DOWNLOAD MODEL") { _, _ ->
+                if (!ready) {
+                    try {
+                        LocalAi.startDownload(this)
+                        show("Offline brain download started. Android will show a notification when it is complete.")
+                    } catch (e: Exception) {
+                        show("I could not start the model download: " + (e.message ?: "unknown error"))
+                    }
+                }
+            }
+            .setNeutralButton("IMPORT GGUF") { _, _ ->
+                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "*/*"
+                }
+                startActivityForResult(intent, MODEL_PICK_REQUEST)
+            }
+            .setNegativeButton(if (ready) "REMOVE MODEL" else "CLOSE") { _, _ ->
+                if (ready) {
+                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                        LocalAi.removeModel(this@MainActivity)
+                        runOnUiThread { show("Offline model removed from this phone.") }
+                    }
+                }
+            }
+            .show()
+    }
+
+    @Deprecated("Deprecated in Android API; retained for this Activity-based app.")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == MODEL_PICK_REQUEST && resultCode == RESULT_OK) {
+            val uri = data?.data ?: return
+            status.text = "IMPORTING MODEL"
+            Thread {
+                try {
+                    LocalAi.importModel(this, uri)
+                    runOnUiThread { status.text = "ONLINE"; show("GGUF model imported successfully. The offline brain is ready.") }
+                } catch (e: Exception) {
+                    runOnUiThread { status.text = "ONLINE"; show("Model import failed: " + (e.message ?: "invalid file")) }
+                }
+            }.start()
+        }
+    }
+
     private fun openSettings() {
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(px(20), px(8), px(20), px(8)) }
         fun field(hint: String, value: String, secret: Boolean = false): EditText {
@@ -366,7 +428,7 @@ class MainActivity : Activity() {
         }
         val name = field("Your name", store.name)
         val area = field("Location area", store.area)
-        val provider = field("AI provider: nvidia (recommended) or anthropic (optional)", store.aiProvider)
+        val provider = field("AI mode: local (default), nvidia or anthropic", store.aiProvider)
         val key = field("Anthropic API key (only needed if using Anthropic)", store.apiKey, true)
         val nvidiaKey = field("NVIDIA NIM API key", store.nvidiaApiKey, true)
         val nvidiaModel = field("NVIDIA model ID", store.nvidiaModel)
