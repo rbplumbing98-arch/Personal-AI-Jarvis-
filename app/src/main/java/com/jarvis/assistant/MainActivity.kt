@@ -46,6 +46,7 @@ class MainActivity : Activity() {
     private lateinit var caption: TextView
     private lateinit var you: TextView
     private lateinit var voiceStatus: TextView
+    private var eventFeed: TextView? = null
     private var voice: VoiceInput? = null
     private val uiHandler = Handler(Looper.getMainLooper())
     private var clockView: TextView? = null
