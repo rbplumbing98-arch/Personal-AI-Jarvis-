@@ -149,12 +149,41 @@ class MainActivity : Activity() {
         val key = field("Optional Anthropic API key (online AI)", store.apiKey, true)
         val elKey = field("ElevenLabs API key (Jarvis voice)", store.elevenKey, true)
         val vid = field("ElevenLabs voice ID", store.voiceId)
+        val memoryHeading = TextView(this).apply {
+            text = "PERSONAL MEMORY"
+            setTextColor(Color.parseColor("#D99A24"))
+            textSize = 12f
+            setPadding(0, px(14), 0, px(4))
+        }
+        box.addView(memoryHeading)
+        val memoryInput = EditText(this).apply {
+            hint = "Add something for JARVIS to know about you…"
+            setTextColor(Color.parseColor("#F5D58A"))
+            setHintTextColor(Color.parseColor("#8A7046"))
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            minLines = 2
+            gravity = Gravity.TOP or Gravity.START
+        }
+        box.addView(memoryInput)
+        val memoryList = TextView(this).apply {
+            text = store.facts().takeLast(8).joinToString("\n") { "• $it" }
+                .ifBlank { "No personal memories saved yet." }
+            setTextColor(Color.LTGRAY)
+            textSize = 12f
+            setPadding(0, px(6), 0, px(8))
+        }
+        box.addView(memoryList)
+        val chrome = CheckBox(this).apply {
+            text = "Open live Google searches in Chrome"
+            isChecked = store.useChromeSearch
+        }
         val spotify = CheckBox(this).apply { text = "Use Spotify for music"; isChecked = store.useSpotify }
         val read = CheckBox(this).apply { text = "Read incoming messages aloud"; isChecked = store.readAloud }
         val access = Button(this).apply {
             text = "Grant notification access"
             setOnClickListener { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
         }
+        box.addView(chrome)
         box.addView(spotify)
         box.addView(read)
         box.addView(access)
@@ -167,6 +196,9 @@ class MainActivity : Activity() {
                 store.apiKey = key.text.toString().trim()
                 store.elevenKey = elKey.text.toString().trim()
                 store.voiceId = vid.text.toString().trim()
+                val personalMemory = memoryInput.text.toString().trim()
+                if (personalMemory.isNotBlank()) store.addFact(personalMemory)
+                store.useChromeSearch = chrome.isChecked
                 store.useSpotify = spotify.isChecked
                 store.readAloud = read.isChecked
                 show("Settings saved, sir.")
