@@ -34,13 +34,15 @@ jobs:
           JARVIS_KEY_ALIAS: ${{ secrets.JARVIS_KEY_ALIAS }}
           JARVIS_KEY_PASSWORD: ${{ secrets.JARVIS_KEY_PASSWORD }}
         run: |
-          if [ -n "$JARVIS_KEYSTORE_BASE64" ] && [ -n "$JARVIS_KEYSTORE_PASSWORD" ] && [ -n "$JARVIS_KEY_ALIAS" ] && [ -n "$JARVIS_KEY_PASSWORD" ]; then
-            echo "$JARVIS_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/jarvis-release.jks"
+          if [ -n "$JARVIS_KEYSTORE_BASE64" ] && [ -n "$JARVIS_KEYSTORE_PASSWORD" ] && [ -n "$JARVIS_KEY_ALIAS" ] && [ -n "$JARVIS_KEY_PASSWORD" ] &&
+             printf '%s' "$JARVIS_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/jarvis-release.jks" 2>/dev/null &&
+             keytool -list -keystore "$RUNNER_TEMP/jarvis-release.jks" -storepass "$JARVIS_KEYSTORE_PASSWORD" -alias "$JARVIS_KEY_ALIAS" >/dev/null 2>&1; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
-            echo "Stable release signing key found."
+            echo "Stable release signing key validated."
           else
+            rm -f "$RUNNER_TEMP/jarvis-release.jks"
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Stable release signing is not configured. Building a debug APK only; in-place updates will be blocked unless the signing certificate matches."
+            echo "::warning::Stable signing secrets are missing or invalid. Building a debug APK only; the app will block mismatched in-place updates."
           fi
       - name: Run Android lint and unit-test checks
         run: |
