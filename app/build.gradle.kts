@@ -33,6 +33,7 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 dependencies {
+    implementation("androidx.core:core:1.13.1")
     implementation("androidx.media:media:1.7.0")
     implementation("dev.ffmpegkit-maintained:llama-android:0.1.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
