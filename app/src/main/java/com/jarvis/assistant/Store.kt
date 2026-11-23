@@ -231,7 +231,8 @@ class Store(context: Context) {
     fun addNote(t: String) = add("notes", t)
     fun clearNotes() { sp.edit().remove("notes").apply() }
     fun facts(): List<String> = list("facts")
-    fun addFact(t: String) = add("facts", t)    fun skill(k: String): String? = obj("skills").optString(k, "").ifEmpty { null }
+    fun addFact(t: String) = add("facts", t)
+    fun skill(k: String): String? = obj("skills").optString(k, "").ifEmpty { null }
     fun setSkill(k: String, v: String) {
         val o = obj("skills")
         o.put(k, v)
