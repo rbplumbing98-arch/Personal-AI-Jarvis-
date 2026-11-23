@@ -76,12 +76,12 @@ class MainActivity : Activity() {
         val muted = Color.parseColor("#B9AE96")
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(px(16), px(14), px(16), px(18))
+            setPadding(px(12), px(12), px(12), px(16))
             setBackgroundColor(Color.parseColor("#050709"))
         }
         val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, 0, 0, px(8)) }
         val brand = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        brand.addView(TextView(this).apply { text = "J.A.R.V.I.S."; setTextColor(light); textSize = 19f; letterSpacing = 0.12f })
+        brand.addView(TextView(this).apply { text = "J.A.R.V.I.S."; setTextColor(light); textSize = 21f; letterSpacing = 0.16f; typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL) })
         brand.addView(TextView(this).apply { text = "QUANTUM CORE  •  PERSONAL AI"; setTextColor(gold); textSize = 8f; letterSpacing = 0.18f })
         top.addView(brand, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         status = TextView(this).apply { text = "● ONLINE"; setTextColor(gold); textSize = 10f; gravity = Gravity.CENTER_VERTICAL }
@@ -96,13 +96,13 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(1)))
 
         val hubLabel = TextView(this).apply {
-            text = "QUANTUM CORE  /  CINEMATIC INTERFACE"
+            text = "QUANTUM CORE  /  INTELLIGENCE SYSTEM"
             setTextColor(gold); textSize = 10f; letterSpacing = 0.24f
             gravity = Gravity.CENTER; setPadding(0, px(12), 0, 0)
         }
         content.addView(hubLabel)
         hud = HudView(this)
-        content.addView(hud, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(380))
+        content.addView(hud, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(310))
             .apply { setMargins(0, px(2), 0, 0) })
         content.addView(TextView(this).apply {
             text = "SYSTEM CORE  •  ACTIVE"; setTextColor(light); textSize = 9f
@@ -114,7 +114,7 @@ class MainActivity : Activity() {
             text = "$label\n$value"; textSize = 8f; gravity = Gravity.CENTER
             setTextColor(color); setPadding(px(5), px(7), px(5), px(7))
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#14110B")); setStroke(px(1), Color.parseColor("#6B5126"))
+                setColor(Color.parseColor("#15110B")); setStroke(px(1), Color.parseColor("#80602D"))
                 cornerRadius = px(8).toFloat()
             }
         }
@@ -135,9 +135,9 @@ class MainActivity : Activity() {
 
         val intelligenceRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         val modelReady = LocalAi.hasModel(this)
-        val diagnosticsText = "AI  •  ${store.aiProvider.uppercase(Locale.ROOT)}\\nOFFLINE MODEL  •  ${if (modelReady) "READY" else "NOT INSTALLED"}\\nNETWORK  •  ${if (network) "CONNECTED" else "OFFLINE"}"
+        val diagnosticsText = "AI  •  ${store.aiProvider.uppercase(Locale.ROOT)}\nOFFLINE MODEL  •  ${if (modelReady) "READY" else "NOT INSTALLED"}\nNETWORK  •  ${if (network) "CONNECTED" else "OFFLINE"}"
         intelligenceRow.addView(panel("LEFT CONSOLE  /  DIAGNOSTICS", diagnosticsText), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(5), 0) })
-        intelligenceRow.addView(panel("RIGHT CONSOLE  /  EVENT FEED", "QUANTUM CORE INITIALISED\\nVOICE INTERFACE READY\\nMEMORY STORE LOCAL"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        intelligenceRow.addView(panel("RIGHT CONSOLE  /  EVENT FEED", "QUANTUM CORE INITIALISED\nVOICE INTERFACE READY\nMEMORY STORE LOCAL"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         content.addView(intelligenceRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 0, 0, px(9)) })
 
         val weatherCard = panel("LIVE WEATHER  /  CENTURION", "Connecting to weather feed…")
@@ -453,7 +453,7 @@ class MainActivity : Activity() {
     private fun panel(title: String, body: String): LinearLayout {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(px(9), px(10), px(7), px(10))
+            setPadding(px(12), px(12), px(10), px(12))
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#100E0A"))
                 setStroke(px(1), Color.parseColor("#6B5126"))
@@ -461,11 +461,11 @@ class MainActivity : Activity() {
             }
         }
         card.addView(TextView(this).apply {
-            text = title; textSize = 9f; letterSpacing = 0.12f
+            text = title; textSize = 9f; letterSpacing = 0.16f; typeface = android.graphics.Typeface.DEFAULT_BOLD
             setTextColor(Color.parseColor("#E2B65F"))
         })
         card.addView(TextView(this).apply {
-            text = body; textSize = 10f; setTextColor(Color.parseColor("#D2C5A8"))
+            text = body; textSize = 11f; setTextColor(Color.parseColor("#E0D4BA")); setLineSpacing(px(3).toFloat(), 1f)
             setPadding(0, px(6), 0, 0)
         })
         return card
