@@ -102,7 +102,15 @@ class Store(context: Context) {
         }
 
     var aiProvider: String
-        get() = sp.getString("ai_provider", "anthropic") ?: "anthropic"
+        get() {
+            val saved = sp.getString("ai_provider", "nvidia") ?: "nvidia"
+            // Migrate existing installs to NVIDIA when Anthropic was selected but no Anthropic key exists.
+            if (saved != "nvidia" && apiKey.isBlank() && nvidiaApiKey.isNotBlank()) {
+                sp.edit().putString("ai_provider", "nvidia").apply()
+                return "nvidia"
+            }
+            return if (saved == "nvidia") "nvidia" else "anthropic"
+        }
         set(v) { sp.edit().putString("ai_provider", if (v == "nvidia") "nvidia" else "anthropic").apply() }
 
     var nvidiaModel: String
