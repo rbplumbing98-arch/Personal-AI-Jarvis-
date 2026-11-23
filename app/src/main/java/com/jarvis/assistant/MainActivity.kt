@@ -71,10 +71,13 @@ class MainActivity : Activity() {
         val blue = Color.parseColor("#D99A24")
         val light = Color.parseColor("#F5D58A")
         val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#04080C"))
-            setPadding(px(16), px(12), px(16), px(12))
+            orientation = LinearLayout.HORIZONTAL
+            setBackgroundColor(Color.parseColor("#03070B"))
             fitsSystemWindows = true
+        }
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(px(10), px(12), px(12), px(12))
         }
 
         val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
@@ -92,16 +95,16 @@ class MainActivity : Activity() {
             text = "SETTINGS"; textSize = 11f; setTextColor(light); setBackgroundColor(Color.TRANSPARENT)
             setOnClickListener { openSettings() }
         })
-        root.addView(top)
+        content.addView(top)
 
         hud = HudView(this)
         val hubLabel = TextView(this).apply {
             text = "QUANTUM CORE  /  3D HOLOGRAPHIC INTERFACE"
-            setTextColor(Color.parseColor("#69DDF4")); textSize = 9f; letterSpacing = 0.18f
+            setTextColor(Color.parseColor("#E9B84E")); textSize = 11f; letterSpacing = 0.32f
             gravity = Gravity.CENTER; setPadding(0, px(10), 0, px(2))
         }
-        root.addView(hubLabel)
-        root.addView(hud, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(270)))
+        content.addView(hubLabel)
+        content.addView(hud, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(310)))
 
         val indicators = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER
@@ -111,7 +114,7 @@ class MainActivity : Activity() {
             text = label + "\n" + value; textSize = 9f; gravity = Gravity.CENTER
             setTextColor(color); setPadding(px(5), px(7), px(5), px(7))
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#101D27")); setStroke(px(1), Color.parseColor("#244252"))
+                setColor(Color.parseColor("#17140E")); setStroke(px(1), Color.parseColor("#6B5126"))
                 cornerRadius = px(8).toFloat()
             }
         }
@@ -123,17 +126,19 @@ class MainActivity : Activity() {
         indicators.addView(indicator("MEMORY", "LOCAL", light), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(4), 0) })
         val network = (getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager).activeNetwork != null
         indicators.addView(indicator("NETWORK", if (network) "CONNECTED" else "OFFLINE", if (network) light else Color.parseColor("#E5A33A")), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        root.addView(indicators)
+        content.addView(indicators)
 
-        val panels = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        val panels = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
+        val liveRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
         val weatherCard = panel("LIVE WEATHER • CENTURION", "Connecting to weather feed…")
         weatherView = weatherCard.getChildAt(1) as TextView
-        panels.addView(weatherCard, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(5), 0) })
+        liveRow.addView(weatherCard, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(5), 0) })
         val timeCard = panel("PRETORIA • LOCAL TIME", "Loading local time…")
         clockView = timeCard.getChildAt(1) as TextView
-        panels.addView(timeCard, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(5), 0) })
-        panels.addView(panel("TASKS / MEMORY", store.notes().size.toString() + " SAVED NOTES\nOn-device memory"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        root.addView(panels)
+        liveRow.addView(timeCard, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        panels.addView(liveRow)
+        panels.addView(panel("TASKS / MEMORY", store.notes().size.toString() + " SAVED NOTES     •     ON-DEVICE MEMORY"))
+        content.addView(panels)
         clockTick.run()
         weatherView?.let { refreshWeather(it) }
 
@@ -141,11 +146,11 @@ class MainActivity : Activity() {
             text = if (store.elevenKey.isBlank()) "VOICE • Add your ElevenLabs key in Settings" else "VOICE • ElevenLabs configured"
             setTextColor(blue); textSize = 10f; setPadding(px(4), px(4), px(4), 0)
         }
-        root.addView(voiceStatus)
+        content.addView(voiceStatus)
         caption = TextView(this).apply { setTextColor(light); textSize = 16f; minLines = 2; setPadding(px(4), px(8), px(4), px(4)) }
         you = TextView(this).apply { setTextColor(Color.parseColor("#C58A1B")); textSize = 12f; setPadding(px(4), 0, px(4), px(8)) }
-        root.addView(caption)
-        root.addView(you)
+        content.addView(caption)
+        content.addView(you)
 
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         val input = EditText(this).apply {
@@ -163,7 +168,7 @@ class MainActivity : Activity() {
             text = "◉ MIC"; setTextColor(light); setBackgroundColor(Color.parseColor("#38270D"))
             setOnClickListener { micTapped() }
         }, LinearLayout.LayoutParams(px(72), px(56)))
-        root.addView(row)
+        content.addView(row)
 
         val quick = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, px(8), 0, px(8)) }
         fun quickAction(label: String, prompt: String) {
@@ -177,7 +182,47 @@ class MainActivity : Activity() {
         quickAction("NAV", "navigate to ")
         quickAction("REMIND", "remind me to ")
         quickAction("CALL", "call ")
-        root.addView(quick)
+        content.addView(quick)
+
+        val rail = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            setPadding(px(4), px(14), px(4), px(10))
+            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.parseColor("#10100D"), Color.parseColor("#070A0D")))
+                .apply { setStroke(px(1), Color.parseColor("#3B2D14")) }
+        }
+        rail.addView(TextView(this).apply {
+            text = "J"; gravity = Gravity.CENTER; textSize = 17f
+            setTextColor(Color.parseColor("#E6B44A")); setPadding(0, px(4), 0, px(18))
+        })
+        fun railButton(symbol: String, hint: String, action: () -> Unit) {
+            val item = TextView(this).apply {
+                text = symbol; gravity = Gravity.CENTER; textSize = 18f
+                setTextColor(Color.parseColor("#D9B45E"))
+                background = GradientDrawable().apply {
+                    setColor(Color.parseColor("#17160F"))
+                    setStroke(px(1), Color.parseColor("#51401F"))
+                    cornerRadius = px(9).toFloat()
+                }
+                setPadding(0, px(10), 0, px(10))
+                contentDescription = hint
+                setOnClickListener { action() }
+            }
+            rail.addView(item, LinearLayout.LayoutParams(px(40), px(44)).apply { setMargins(0, 0, 0, px(9)) })
+        }
+        railButton("⌂", "Home") { show("Quantum Core is standing by, sir.") }
+        railButton("◉", "AI models") { openModelManager() }
+        railButton("▤", "Memory") {
+            AlertDialog.Builder(this).setTitle("J.A.R.V.I.S. MEMORY")
+                .setMessage(store.notes().takeLast(20).joinToString("\n\n").ifBlank { "No saved notes yet." })
+                .setPositiveButton("CLOSE", null).show()
+        }
+        railButton("♫", "Music") { ask("play music") }
+        railButton("⌖", "Voice input") { micTapped() }
+        railButton("⚙", "Settings") { openSettings() }
+        root.addView(rail, LinearLayout.LayoutParams(px(50), ViewGroup.LayoutParams.MATCH_PARENT))
+        root.addView(content, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
 
         setContentView(ScrollView(this).apply {
             isFillViewport = true
