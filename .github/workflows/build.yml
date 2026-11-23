@@ -27,7 +27,9 @@ jobs:
       - name: Install Android platform
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
       - name: Run Android lint and unit-test checks
-        run: ./gradlew --no-daemon --stacktrace :app:lintDebug :app:testDebugUnitTest
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon --stacktrace :app:lintDebug :app:testDebugUnitTest
       - name: Build installable debug APK
         env:
           JARVIS_VERSION_CODE: ${{ github.run_number }}
