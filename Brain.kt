@@ -130,6 +130,18 @@ class Brain(context: Context, private val store: Store) {
         }
         if (Regex("^(call|phone)\\b").containsMatchIn(l)) return reply("I need a phone number, sir. I do not read your contacts.")
 
+        Regex("^(?:search(?: google| the web)? for|google|look up|find online)\\s+(.+)$").find(l)?.let { match ->
+            val searchTerm = match.groupValues[1].trim()
+            val searchUrl = "https://www.google.com/search?q=" + Uri.encode(searchTerm)
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(searchUrl))
+            if (store.useChromeSearch) intent.setPackage("com.android.chrome")
+            val opened = launch(intent) || launch(Intent(Intent.ACTION_VIEW, Uri.parse(searchUrl)))
+            return reply(
+                if (opened) "Opening Google search for $searchTerm, sir."
+                else "I could not open a browser. Please install or enable Google Chrome, sir."
+            )
+        }
+
         if (Regex("\\btime\\b").containsMatchIn(l) && l.length < 30) {
             return reply("It is " + SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date()) + ", sir.")
         }
