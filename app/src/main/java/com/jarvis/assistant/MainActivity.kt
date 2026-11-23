@@ -21,6 +21,8 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ArrayAdapter
+import android.widget.Spinner
 import android.widget.ScrollView
 import android.widget.TextView
 import java.util.Calendar
@@ -131,6 +133,13 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         content.addView(indicators)
 
+        val intelligenceRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        val modelReady = LocalAi.hasModel(this)
+        val diagnosticsText = "AI  •  ${store.aiProvider.uppercase(Locale.ROOT)}\\nOFFLINE MODEL  •  ${if (modelReady) "READY" else "NOT INSTALLED"}\\nNETWORK  •  ${if (network) "CONNECTED" else "OFFLINE"}"
+        intelligenceRow.addView(panel("LEFT CONSOLE  /  DIAGNOSTICS", diagnosticsText), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(5), 0) })
+        intelligenceRow.addView(panel("RIGHT CONSOLE  /  EVENT FEED", "QUANTUM CORE INITIALISED\\nVOICE INTERFACE READY\\nMEMORY STORE LOCAL"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        content.addView(intelligenceRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 0, 0, px(9)) })
+
         val weatherCard = panel("LIVE WEATHER  /  CENTURION", "Connecting to weather feed…")
         weatherView = weatherCard.getChildAt(1) as TextView
         content.addView(weatherCard, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -178,9 +187,29 @@ class MainActivity : Activity() {
             setOnClickListener { Speaker.stop(); hud.mode = 0; status.text = "● ONLINE" }
         }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(38)))
 
-        setContentView(ScrollView(this).apply {
-            isFillViewport = true; setBackgroundColor(Color.parseColor("#050709")); addView(content)
-        })
+        // Slim navigation rail and scrollable mobile dashboard.
+        val shell = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setBackgroundColor(Color.parseColor("#050709")) }
+        val rail = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            setPadding(px(3), px(12), px(3), px(8))
+            background = GradientDrawable().apply { setColor(Color.parseColor("#090A0B")); setStroke(px(1), Color.parseColor("#382B17")) }
+        }
+        fun railAction(glyph: String, label: String, action: () -> Unit) {
+            rail.addView(Button(this).apply {
+                text = "$glyph\\n$label"; textSize = 8f; isAllCaps = false
+                setTextColor(Color.parseColor("#E5BD70")); setBackgroundColor(Color.TRANSPARENT)
+                contentDescription = label; setOnClickListener { action() }
+            }, LinearLayout.LayoutParams(px(48), px(58)))
+        }
+        railAction("⌂", "HUB") { show("Quantum Core is online, sir.") }
+        railAction("◈", "MEM") { openMemoryManager() }
+        railAction("◉", "AI") { openModelManager() }
+        railAction("⚙", "SET") { openSettings() }
+        railAction("⋯", "MORE") { showControlMenu() }
+        shell.addView(rail, LinearLayout.LayoutParams(px(54), ViewGroup.LayoutParams.MATCH_PARENT))
+        val dashboardScroll = ScrollView(this).apply { isFillViewport = true; setBackgroundColor(Color.parseColor("#050709")); addView(content) }
+        shell.addView(dashboardScroll, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
+        setContentView(shell)
 
         Speaker.onState = { on ->
             runOnUiThread { hud.mode = if (on) 2 else 0; status.text = if (on) "● SPEAKING" else "● ONLINE" }
@@ -206,9 +235,7 @@ class MainActivity : Activity() {
             .setItems(items) { _, which ->
                 when (which) {
                     0 -> openModelManager()
-                    1 -> AlertDialog.Builder(this).setTitle("J.A.R.V.I.S. MEMORY")
-                        .setMessage(store.notes().takeLast(20).joinToString("\n\n").ifBlank { "No saved notes yet." })
-                        .setPositiveButton("CLOSE", null).show()
+                    1 -> openMemoryManager()
                     2 -> ask("play music")
                     3, 4, 6 -> openSettings()
                     5 -> showDiagnostics()
@@ -219,6 +246,59 @@ class MainActivity : Activity() {
             .setNegativeButton("CLOSE", null).show()
     }
 
+    private fun openMemoryManager() {
+        val entries = store.memories()
+        val labels = entries.map { "[${it.category}]  ${it.text}" }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("J.A.R.V.I.S.  /  MEMORY MANAGER")
+            .setItems(labels) { _, which -> editMemory(entries[which]) }
+            .setPositiveButton("＋ ADD MEMORY") { _, _ -> editMemory(null) }
+            .setNeutralButton("ABOUT MEMORY") { _, _ ->
+                AlertDialog.Builder(this).setTitle("YOUR PRIVATE MEMORY")
+                    .setMessage("Memories are stored locally in JARVIS app storage. Add facts, preferences, people, work details or instructions. Select an entry to edit it. Memories from older versions are also displayed.")
+                    .setPositiveButton("GOT IT", null).show()
+            }
+            .setNegativeButton("CLOSE", null).show()
+    }
+
+    private fun editMemory(existing: Store.MemoryEntry?) {
+        val categories = arrayOf("Personal", "Family", "Work", "Preferences", "Projects", "Instructions", "Notes")
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(px(20), px(8), px(20), px(4)) }
+        val category = Spinner(this).apply {
+            adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, categories)
+            val selected = categories.indexOf(existing?.category ?: "Personal")
+            setSelection(if (selected >= 0) selected else 0)
+        }
+        val value = EditText(this).apply {
+            hint = "What should JARVIS remember?"; setText(existing?.text.orEmpty())
+            minLines = 3; maxLines = 6; gravity = Gravity.TOP
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+        }
+        box.addView(TextView(this).apply { text = "CATEGORY"; textSize = 10f; setTextColor(Color.parseColor("#D9A441")) })
+        box.addView(category)
+        box.addView(TextView(this).apply { text = "MEMORY"; textSize = 10f; setTextColor(Color.parseColor("#D9A441")); setPadding(0, px(10), 0, 0) })
+        box.addView(value)
+        val builder = AlertDialog.Builder(this).setTitle(if (existing == null) "ADD MEMORY" else "EDIT MEMORY").setView(box).setPositiveButton("SAVE", null).setNegativeButton("CANCEL", null)
+        if (existing != null && !existing.id.startsWith("legacy-")) builder.setNeutralButton("DELETE", null)
+        val dialog = builder.create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val text = value.text.toString().trim()
+                if (text.isBlank()) { value.error = "Enter something for JARVIS to remember"; return@setOnClickListener }
+                store.saveMemory(existing?.id, category.selectedItem.toString(), text)
+                dialog.dismiss(); openMemoryManager()
+            }
+            if (existing != null && !existing.id.startsWith("legacy-")) {
+                dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+                    AlertDialog.Builder(this).setTitle("Delete this memory?").setMessage("This removes the selected entry from JARVIS memory.")
+                        .setNegativeButton("KEEP", null).setPositiveButton("DELETE") { _, _ ->
+                            store.deleteMemory(existing.id); dialog.dismiss(); openMemoryManager()
+                        }.show()
+                }
+            }
+        }
+        dialog.show()
+    }
     private fun showDiagnostics() {
         val network = (getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager).activeNetwork != null
         val model = if (LocalAi.hasModel(this)) "Installed" else "Not installed"
