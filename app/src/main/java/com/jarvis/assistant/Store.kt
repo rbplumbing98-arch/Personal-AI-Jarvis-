@@ -222,8 +222,22 @@ class Store(context: Context) {
         }
         val a = arr("memory_entries")
         val next = JSONArray()
-        for (i in 0 until a.length()) { val item = a.optJSONObject(i) ?: continue; if (item.optString("id") != id) next.put(item) }
+        var removedText: String? = null
+        for (i in 0 until a.length()) {
+            val item = a.optJSONObject(i) ?: continue
+            if (item.optString("id") == id) removedText = item.optString("text")
+            else next.put(item)
+        }
         sp.edit().putString("memory_entries", next.toString()).apply()
+
+        // Older versions mirrored manager entries into notes; remove that mirror too.
+        if (!removedText.isNullOrBlank()) {
+            val currentNotes = notes()
+            val remainingNotes = currentNotes.filterNot { it == removedText }
+            if (remainingNotes.size != currentNotes.size) {
+                sp.edit().putString("notes", JSONArray(remainingNotes).toString()).apply()
+            }
+        }
     }
 
     fun notes(): List<String> = list("notes")
