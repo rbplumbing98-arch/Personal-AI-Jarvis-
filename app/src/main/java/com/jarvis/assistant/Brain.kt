@@ -63,7 +63,7 @@ class Brain(context: Context, private val store: Store) {
             val top = store.topPlay()
             return reply(
                 "I know your name as ${store.name.ifBlank { "not yet set" }} and your area as ${store.area.ifBlank { "not yet set" }}. " +
-                    "I hold ${store.facts().size} facts, ${store.skillCount()} taught phrases, and ${store.notes().size} notes" +
+                    "I hold ${store.memories().size} saved memories, ${store.skillCount()} taught phrases, and ${store.conversation().size} recent conversation turns" +
                     (if (top != null) ". Your most played request is $top." else ".")
             )
         }
