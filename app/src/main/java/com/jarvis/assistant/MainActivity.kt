@@ -566,8 +566,10 @@ class MainActivity : Activity() {
         hud.mode = 3
         status.text = "● THINKING"
         caption.text = ""
-        brain.handle(t, { answer -> show(answer, speak = false) }, { phrase ->
+        var streamedSpeechStarted = false
+        brain.handle(t, { answer -> show(answer, speak = !streamedSpeechStarted) }, { phrase ->
             runOnUiThread {
+                streamedSpeechStarted = true
                 caption.text = (caption.text.toString() + " " + phrase).trim()
                 eventFeed?.text = "JARVIS SPEAKING\n" + caption.text.toString().take(115)
                 Speaker.sayIncremental(phrase)
