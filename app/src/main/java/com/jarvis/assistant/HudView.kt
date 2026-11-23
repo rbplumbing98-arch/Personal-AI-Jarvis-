@@ -50,7 +50,7 @@ class HudView(context: Context) : View(context) {
         c.restore()
 
         fill.shader = RadialGradient(cx-r*.25f,cy-r*.28f,r*.95f,
-            intArrayOf(0xFF1B5367.toInt(),0xFF0B2538.toInt(),0xFF030B14.toInt()),null,Shader.TileMode.CLAMP)
+            intArrayOf(0xFF60400F.toInt(),0xFF21180A.toInt(),0xFF050708.toInt()),null,Shader.TileMode.CLAMP)
         c.drawCircle(cx,cy,r*.78f,fill); fill.shader=null
         line.color=gold; line.alpha=225; line.strokeWidth=dp(1.4f)
         c.drawCircle(cx,cy,r*.78f,line)
@@ -72,9 +72,26 @@ class HudView(context: Context) : View(context) {
             c.restore()
         }
 
-        fill.shader=RadialGradient(cx,cy,r*.42f,intArrayOf(Color.WHITE,ice,0xFFFFB52E.toInt(),0x00FFB52E),null,Shader.TileMode.CLAMP)
+        fill.shader=RadialGradient(cx,cy,r*.42f,intArrayOf(Color.WHITE,0xFFFFE2A0.toInt(),0xFFFFB52E.toInt(),0x00FF9D16),null,Shader.TileMode.CLAMP)
         c.drawCircle(cx,cy,r*.40f,fill); fill.shader=null
-        fill.color=Color.WHITE; c.drawCircle(cx,cy,r*.08f,fill)
+
+        // Layered reactor rings and radial energy spokes add depth to the central core.
+        line.color=ice; line.alpha=220; line.strokeWidth=dp(1.4f)
+        c.drawCircle(cx,cy,r*.48f,line)
+        line.color=gold; line.alpha=180; line.strokeWidth=dp(2f)
+        c.drawCircle(cx,cy,r*.57f,line)
+        c.save(); c.rotate(-rotation*1.35f,cx,cy)
+        for (i in 0 until 24) {
+            val angle=(i*15f)*PI.toFloat()/180f
+            val x1=cx+cos(angle)*r*.47f; val y1=cy+sin(angle)*r*.47f
+            val x2=cx+cos(angle)*r*.55f; val y2=cy+sin(angle)*r*.55f
+            line.color=if(i%3==0) ice else gold
+            line.alpha=if(i%3==0) 220 else 110
+            line.strokeWidth=if(i%3==0) dp(1.5f) else dp(.7f)
+            c.drawLine(x1,y1,x2,y2,line)
+        }
+        c.restore()
+        fill.color=Color.WHITE; c.drawCircle(cx,cy,r*.075f,fill)
 
         for(i in 0 until 6) {
             val a=(rotation*(if(i%2==0) 1f else -1f)+i*60f)*PI.toFloat()/180f
