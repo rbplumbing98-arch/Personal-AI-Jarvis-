@@ -26,21 +26,50 @@ jobs:
           packages: platform-tools
       - name: Install Android platform
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Prepare stable release signing
+        id: signing
+        env:
+          JARVIS_KEYSTORE_BASE64: ${{ secrets.JARVIS_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$JARVIS_KEYSTORE_BASE64" ] && [ -n "${{ secrets.JARVIS_KEYSTORE_PASSWORD }}" ] && [ -n "${{ secrets.JARVIS_KEY_ALIAS }}" ] && [ -n "${{ secrets.JARVIS_KEY_PASSWORD }}" ]; then
+            echo "$JARVIS_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/jarvis-release.jks"
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "Stable release signing key found."
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Stable release signing is not configured. Building a debug APK only; in-place updates will be blocked unless the signing certificate matches."
+          fi
       - name: Run Android lint and unit-test checks
         run: |
           chmod +x ./gradlew
           ./gradlew --no-daemon --stacktrace :app:lintDebug :app:testDebugUnitTest
-      - name: Build installable debug APK
+      - name: Build stable signed release APK
+        if: steps.signing.outputs.ready == 'true' && github.event_name != 'pull_request'
+        env:
+          JARVIS_VERSION_CODE: ${{ github.run_number }}
+          JARVIS_KEYSTORE_PATH: ${{ runner.temp }}/jarvis-release.jks
+          JARVIS_KEYSTORE_PASSWORD: ${{ secrets.JARVIS_KEYSTORE_PASSWORD }}
+          JARVIS_KEY_ALIAS: ${{ secrets.JARVIS_KEY_ALIAS }}
+          JARVIS_KEY_PASSWORD: ${{ secrets.JARVIS_KEY_PASSWORD }}
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon --stacktrace :app:assembleRelease
+          mkdir -p app/build/outputs/apk/final
+          cp app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/final/jarvis.apk
+      - name: Build debug APK (no stable signing key configured)
+        if: steps.signing.outputs.ready != 'true' || github.event_name == 'pull_request'
         env:
           JARVIS_VERSION_CODE: ${{ github.run_number }}
         run: |
           chmod +x ./gradlew
           ./gradlew --no-daemon --stacktrace :app:assembleDebug
+          mkdir -p app/build/outputs/apk/final
+          cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/final/jarvis.apk
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: jarvis-debug-${{ github.run_number }}
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: jarvis-${{ steps.signing.outputs.ready == 'true' && 'release' || 'debug' }}-${{ github.run_number }}
+          path: app/build/outputs/apk/final/jarvis.apk
           if-no-files-found: error
           retention-days: 30
       - name: Publish JARVIS APK
@@ -51,4 +80,4 @@ jobs:
           name: JARVIS build ${{ github.run_number }}
           generate_release_notes: true
           make_latest: true
-          files: app/build/outputs/apk/debug/app-debug.apk
+          files: app/build/outputs/apk/final/jarvis.apk
