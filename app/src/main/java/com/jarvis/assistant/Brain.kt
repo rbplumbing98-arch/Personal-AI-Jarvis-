@@ -153,6 +153,7 @@ class Brain(context: Context, private val store: Store) {
         val localReady = LocalAi.hasModel(ctx)
         val cloudProvider = if (selected == "local") store.onlineProvider else selected
         val cloudKeyReady = if (cloudProvider == "nvidia") store.nvidiaApiKey.isNotBlank() else store.apiKey.isNotBlank()
+        val anyCloudKeyReady = store.nvidiaApiKey.isNotBlank() || store.apiKey.isNotBlank()
 
         if (selected == "local" && localReady) {
             runLocal(q, key, reply)
@@ -165,7 +166,7 @@ class Brain(context: Context, private val store: Store) {
         if (!online() && !localReady) {
             return reply("I am offline and no local AI model is installed. Open MODELS to download my offline brain, sir.")
         }
-        if (!cloudKeyReady && !localReady) {
+        if (!anyCloudKeyReady && !localReady) {
             return reply("No AI provider is configured. Open MODELS to install the free offline brain, or add an online provider key in Settings.")
         }
 
