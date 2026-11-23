@@ -270,7 +270,7 @@ class Brain(context: Context, private val store: Store) {
         buffer.append(incoming)
         if (emit == null) return
         while (true) {
-            val match = Regex("[.!?](?:[\\"')\\]]*)\\s+").find(buffer.toString()) ?: break
+            val match = Regex("[.!?]\\s+").find(buffer.toString()) ?: break
             val end = match.range.last + 1
             val phrase = buffer.substring(0, end).trim()
             if (phrase.length >= 12) emit(phrase)
