@@ -132,8 +132,17 @@ class Store(context: Context) {
         set(v) { sp.edit().putString("online_provider", if (v == "anthropic") "anthropic" else "nvidia").apply() }
 
     var nvidiaModel: String
-        get() = sp.getString("nvidia_model", "meta/llama-3.3-70b-instruct") ?: "meta/llama-3.3-70b-instruct"
-        set(v) { sp.edit().putString("nvidia_model", v.trim().ifBlank { "meta/llama-3.3-70b-instruct" }).apply() }
+        get() {
+            val saved = sp.getString("nvidia_model", null)
+            // Move only the old built-in default to the faster 8B model.
+            // A user-selected custom model is always preserved.
+            if (saved.isNullOrBlank() || saved == "meta/llama-3.3-70b-instruct") {
+                sp.edit().putString("nvidia_model", "meta/llama-3.1-8b-instruct").apply()
+                return "meta/llama-3.1-8b-instruct"
+            }
+            return saved
+        }
+        set(v) { sp.edit().putString("nvidia_model", v.trim().ifBlank { "meta/llama-3.1-8b-instruct" }).apply() }
 
     var anthropicModel: String
         get() = sp.getString("anthropic_model", "claude-sonnet-4-5") ?: "claude-sonnet-4-5"
