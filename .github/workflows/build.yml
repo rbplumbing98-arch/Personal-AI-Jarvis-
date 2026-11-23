@@ -26,6 +26,8 @@ jobs:
           packages: platform-tools
       - name: Install Android platform
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Run Android lint and unit-test checks
+        run: ./gradlew --no-daemon --stacktrace :app:lintDebug :app:testDebugUnitTest
       - name: Build installable debug APK
         env:
           JARVIS_VERSION_CODE: ${{ github.run_number }}
@@ -40,6 +42,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
       - name: Publish JARVIS APK
+        if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: jarvis-build-${{ github.run_number }}
