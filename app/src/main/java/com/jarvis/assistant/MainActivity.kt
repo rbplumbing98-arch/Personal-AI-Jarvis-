@@ -553,10 +553,10 @@ class MainActivity : Activity() {
         }.start()
     }
 
-    private fun show(text: String) {
+    private fun show(text: String, speak: Boolean = true) {
         caption.text = text
         eventFeed?.text = "JARVIS RESPONSE\n" + text.take(115)
-        Speaker.say(text)
+        if (speak) Speaker.say(text)
     }
 
     private fun ask(t: String) {
@@ -565,7 +565,14 @@ class MainActivity : Activity() {
         eventFeed?.text = "PROCESSING REQUEST\n" + t.take(100)
         hud.mode = 3
         status.text = "● THINKING"
-        brain.handle(t) { show(it) }
+        caption.text = ""
+        brain.handle(t, { answer -> show(answer, speak = false) }, { phrase ->
+            runOnUiThread {
+                caption.text = (caption.text.toString() + " " + phrase).trim()
+                eventFeed?.text = "JARVIS SPEAKING\n" + caption.text.toString().take(115)
+                Speaker.sayIncremental(phrase)
+            }
+        })
     }
 
     private fun micTapped() {
