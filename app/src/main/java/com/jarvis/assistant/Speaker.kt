@@ -2,6 +2,8 @@ package com.jarvis.assistant
 
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioFormat
+import android.media.AudioTrack
 import android.media.MediaPlayer
 import android.os.Handler
 import android.os.Looper
@@ -22,6 +24,7 @@ object Speaker {
     private var pending: String? = null
     private var app: Context? = null
     private var player: MediaPlayer? = null
+    @Volatile private var audioTrack: AudioTrack? = null
     private var busy = false
     private var generation = 0
     private val queue = ArrayDeque<String>()
@@ -74,6 +77,17 @@ object Speaker {
         }
     }
 
+    fun sayIncremental(text: String) {
+        if (text.isBlank()) return
+        main.post {
+            val ctx = app
+            if (ctx != null && Store(ctx).elevenKey.isNotBlank() && Store(ctx).voiceId.isNotBlank()) {
+                queue.addLast(text)
+                if (!busy) next()
+            } else sayLocal(text, false)
+        }
+    }
+
     fun testVoice() = say("Good evening. All systems are online. How may I assist you today?")
     fun stop() { main.post { queue.clear(); releasePlayer() } }
 
@@ -82,6 +96,8 @@ object Speaker {
         busy = false
         player?.let { try { it.stop() } catch (_: Exception) {}; it.release() }
         player = null
+        audioTrack?.let { try { it.pause(); it.flush(); it.stop() } catch (_: Exception) {}; try { it.release() } catch (_: Exception) {} }
+        audioTrack = null
         tts?.stop()
         onState?.invoke(false)
     }
@@ -95,16 +111,17 @@ object Speaker {
         val store = Store(ctx)
         io.execute {
             var failure: String? = null
-            val audio = try { fetch(ctx, store.elevenKey, store.voiceId, phrase) }
-            catch (e: Exception) { failure = e.message ?: "Network or audio error"; null }
+            try { streamPcm(ctx, store.elevenKey, store.voiceId, phrase, current) }
+            catch (e: Exception) { failure = e.message ?: "ElevenLabs streaming error" }
             main.post {
                 if (current != generation) return@post
-                if (audio == null) {
-                    busy = false
-                    onVoiceError?.invoke(failure ?: "ElevenLabs did not return audio. Check API key, voice ID and account quota.")
+                audioTrack = null
+                busy = false
+                if (failure != null) {
+                    onVoiceError?.invoke("ElevenLabs streaming failed. Using the phone voice instead. " + failure)
                     sayLocal(phrase, false)
-                    next()
-                } else play(audio, current)
+                } else onState?.invoke(false)
+                next()
             }
         }
     }
@@ -135,6 +152,99 @@ object Speaker {
             busy = false
             onVoiceError?.invoke("Audio playback failed: " + (e.message ?: "unknown error"))
             next()
+        }
+    }
+
+
+    // Request raw PCM and feed AudioTrack as bytes arrive; playback begins before the full audio response downloads.
+    private fun streamPcm(ctx: Context, key: String, voice: String, raw: String, current: Int) {
+        if (key.isBlank() || voice.isBlank()) throw IllegalStateException("ElevenLabs API key is missing.")
+        if (voice.isBlank()) throw IllegalStateException("ElevenLabs voice ID is missing.")
+        val text = raw.take(600)
+        val connection = URL("https://api.elevenlabs.io/v1/text-to-speech/$voice/stream?output_format=pcm_16000")
+            .openConnection() as HttpURLConnection
+        var track: AudioTrack? = null
+        try {
+            connection.requestMethod = "POST"
+            connection.connectTimeout = 7000
+            connection.readTimeout = 30000
+            connection.doOutput = true
+            connection.setRequestProperty("xi-api-key", key)
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.setRequestProperty("Accept", "application/octet-stream")
+            val settings = JSONObject().put("stability", .42).put("similarity_boost", .78)
+                .put("style", .18).put("use_speaker_boost", true)
+            val body = JSONObject().put("text", text).put("model_id", "eleven_flash_v2_5").put("voice_settings", settings)
+            connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+            val code = connection.responseCode
+            if (code !in 200..299) {
+                val detail = try { connection.errorStream?.bufferedReader()?.use { it.readText() }?.take(180) } catch (_: Exception) { null }
+                throw IllegalStateException("ElevenLabs HTTP $code. " + (detail ?: "Check API key, voice ID and quota."))
+            }
+            val minBuffer = AudioTrack.getMinBufferSize(16000, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
+            if (minBuffer <= 0) throw IllegalStateException("This device cannot initialise PCM audio playback.")
+            track = AudioTrack.Builder()
+                .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANT)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+                .setAudioFormat(AudioFormat.Builder().setSampleRate(16000).setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT).build())
+                .setBufferSizeInBytes(maxOf(minBuffer, 8192))
+                .setTransferMode(AudioTrack.MODE_STREAM)
+                .build()
+            audioTrack = track
+            val buffer = ByteArray(4096)
+            val initial = java.io.ByteArrayOutputStream()
+            var started = false
+            connection.inputStream.use { input ->
+                while (current == generation) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    if (!started) {
+                        initial.write(buffer, 0, count)
+                        if (initial.size() < 8192) continue
+                        track.play()
+                        onState?.invoke(true)
+                        val first = initial.toByteArray()
+                        var offset = 0
+                        while (offset < first.size && current == generation) {
+                            offset += track.write(first, offset, first.size - offset, AudioTrack.WRITE_BLOCKING)
+                        }
+                        initial.reset()
+                        started = true
+                    } else {
+                        var offset = 0
+                        while (offset < count && current == generation) {
+                            val written = track.write(buffer, offset, count - offset, AudioTrack.WRITE_BLOCKING)
+                            if (written < 0) throw IllegalStateException("Audio playback stopped unexpectedly.")
+                            offset += written
+                        }
+                    }
+                }
+            }
+            if (current != generation) return
+            if (!started && initial.size() > 0) {
+                val first = initial.toByteArray()
+                track.play()
+                onState?.invoke(true)
+                var offset = 0
+                while (offset < first.size && current == generation) {
+                    val written = track.write(first, offset, first.size - offset, AudioTrack.WRITE_BLOCKING)
+                    if (written < 0) break
+                    offset += written
+                }
+            }
+            if (current == generation && track.playState == AudioTrack.PLAYSTATE_PLAYING) {
+                val deadline = System.currentTimeMillis() + 15000
+                while (current == generation && track.playbackHeadPosition.toLong() * 2 < track.getPlaybackHeadPosition().toLong() * 2 && System.currentTimeMillis() < deadline) {
+                    Thread.sleep(20)
+                }
+                Thread.sleep(120)
+            }
+        } finally {
+            connection.disconnect()
+            try { track?.pause(); track?.flush(); track?.stop() } catch (_: Exception) {}
+            try { track?.release() } catch (_: Exception) {}
+            if (audioTrack === track) audioTrack = null
         }
     }
 
