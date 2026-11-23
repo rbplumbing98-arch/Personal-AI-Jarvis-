@@ -141,27 +141,79 @@ class Brain(context: Context, private val store: Store) {
     private fun ask(q: String, reply: (String) -> Unit) {
         val key = q.lowercase(Locale.ROOT).replace(Regex("[^a-z0-9 ]"), "").trim()
         store.cached(key)?.let { return reply(it) }
-        if (!online()) return reply("I am offline, sir. I can still use notes, what you have taught me, and my saved answers.")
-        if (store.aiProvider == "nvidia" && store.nvidiaApiKey.isBlank()) return reply("Add your NVIDIA NIM API key in settings, then select NVIDIA as the AI provider, sir.")
-        if (store.aiProvider != "nvidia" && store.apiKey.isBlank()) return reply("Add your Anthropic API key in settings so I can answer open questions, sir.")
+
+        val selected = store.aiProvider
+        val localReady = LocalAi.hasModel(ctx)
+        val cloudProvider = if (selected == "local") store.onlineProvider else selected
+        val cloudKeyReady = if (cloudProvider == "nvidia") store.nvidiaApiKey.isNotBlank() else store.apiKey.isNotBlank()
+
+        if (selected == "local" && localReady) {
+            runLocal(q, key, reply)
+            return
+        }
+        if (!online() && localReady) {
+            runLocal(q, key, reply)
+            return
+        }
+        if (!online() && !localReady) {
+            return reply("I am offline and no local AI model is installed. Open MODELS to download my offline brain, sir.")
+        }
+        if (!cloudKeyReady && !localReady) {
+            return reply("No AI provider is configured. Open MODELS to install the free offline brain, or add an online provider key in Settings.")
+        }
+
         Thread {
-            val result = try {
-                (if (store.aiProvider == "nvidia") callNvidia(q) else callClaude(q)) to null
-            } catch (e: ProviderFailure) {
-                null to e.userMessage
-            } catch (e: Exception) {
-                null to "I could not reach the selected AI provider. Please check your internet connection and API settings, then try again."
-            }
-            main.post {
-                val out = result.first
-                if (out == null) {
-                    reply(result.second ?: "The reasoning service did not return a response.")
+            var answer: String? = null
+            var failure: String? = null
+            var usedLocal = false
+            try {
+                if (cloudKeyReady) {
+                    answer = if (cloudProvider == "nvidia") callNvidia(q) else callClaude(q)
                 } else {
-                    store.cachePut(key, out)
-                    reply(out)
+                    failure = "The selected online provider has no API key configured."
+                }
+            } catch (e: Exception) {
+                failure = e.message ?: "The online AI provider could not be reached."
+            }
+
+            if (answer == null && localReady) {
+                try {
+                    answer = kotlinx.coroutines.runBlocking { LocalAi.answer(ctx, q, localSystemPrompt()) }
+                    usedLocal = true
+                } catch (e: Exception) {
+                    failure = (failure ?: "Online AI is unavailable.") + " Offline fallback also failed: " + (e.message ?: "model error")
+                }
+            }
+
+            main.post {
+                if (answer != null) {
+                    store.cachePut(key, answer!!)
+                    reply(if (usedLocal) "Online AI unavailable; switching to the offline brain. " + answer else answer!!)
+                } else {
+                    reply(failure ?: "The AI service did not return a response. Download a local model in MODELS for offline fallback.")
                 }
             }
         }.start()
+    }
+
+    private fun localSystemPrompt(): String {
+        val who = store.name.ifBlank { "sir" }
+        val facts = store.facts().takeLast(15).joinToString("; ").ifBlank { "none" }
+        return "You are JARVIS, a calm, refined British AI butler. Address the user as " + who +
+            " naturally. Give useful, accurate answers in clear spoken language. Avoid markdown unless asked. " +
+            "User area: " + store.area.ifBlank { "unknown" } + ". Known facts: " + facts + "."
+    }
+
+    private fun runLocal(q: String, key: String, reply: (String) -> Unit) {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                val answer = LocalAi.answer(ctx, q, localSystemPrompt())
+                store.cachePut(key, answer)
+                main.post { reply(answer) }
+            } catch (e: Exception) {
+                main.post { reply("I could not start the offline brain: " + (e.message ?: "model error") + ". Open MODELS to check the model, sir.") }
+            }
+        }
     }
 
     private fun callClaude(q: String): String {

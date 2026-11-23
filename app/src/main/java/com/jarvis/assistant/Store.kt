@@ -103,15 +103,33 @@ class Store(context: Context) {
 
     var aiProvider: String
         get() {
-            val saved = sp.getString("ai_provider", "nvidia") ?: "nvidia"
-            // Migrate existing installs to NVIDIA when Anthropic was selected but no Anthropic key exists.
-            if (saved != "nvidia" && apiKey.isBlank() && nvidiaApiKey.isNotBlank()) {
-                sp.edit().putString("ai_provider", "nvidia").apply()
-                return "nvidia"
+            if (!sp.getBoolean("local_ai_default_migrated", false)) {
+                val previous = sp.getString("ai_provider", "nvidia") ?: "nvidia"
+                if (previous == "nvidia" || previous == "anthropic") {
+                    sp.edit().putString("online_provider", previous).apply()
+                }
+                sp.edit().putString("ai_provider", "local")
+                    .putBoolean("local_ai_default_migrated", true).apply()
             }
-            return if (saved == "nvidia") "nvidia" else "anthropic"
+            return when (sp.getString("ai_provider", "local")) {
+                "nvidia" -> "nvidia"
+                "anthropic" -> "anthropic"
+                else -> "local"
+            }
         }
-        set(v) { sp.edit().putString("ai_provider", if (v == "nvidia") "nvidia" else "anthropic").apply() }
+        set(v) {
+            val provider = when (v.trim().lowercase()) {
+                "nvidia" -> "nvidia"
+                "anthropic" -> "anthropic"
+                else -> "local"
+            }
+            sp.edit().putString("ai_provider", provider).apply()
+            if (provider != "local") sp.edit().putString("online_provider", provider).apply()
+        }
+
+    var onlineProvider: String
+        get() = if (sp.getString("online_provider", "nvidia") == "anthropic") "anthropic" else "nvidia"
+        set(v) { sp.edit().putString("online_provider", if (v == "anthropic") "anthropic" else "nvidia").apply() }
 
     var nvidiaModel: String
         get() = sp.getString("nvidia_model", "meta/llama-3.3-70b-instruct") ?: "meta/llama-3.3-70b-instruct"

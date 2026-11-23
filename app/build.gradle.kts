@@ -4,7 +4,7 @@ plugins {
 }
 android {
     namespace = "com.jarvis.assistant"
-    compileSdk = 34
+    compileSdk = 35
     defaultConfig {
         applicationId = "com.jarvis.assistant"
         minSdk = 26
@@ -34,4 +34,6 @@ android {
 }
 dependencies {
     implementation("androidx.media:media:1.7.0")
+    implementation("dev.ffmpegkit-maintained:llama-android:0.1.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 }
