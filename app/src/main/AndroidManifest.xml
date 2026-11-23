@@ -16,7 +16,7 @@
     <application
         android:allowBackup="false"
         android:icon="@android:drawable/ic_btn_speak_now"
-        android:label="J.A.R.V.I.S."
+        android:label="${appLabel}"
         android:theme="@style/JarvisTheme">
         <meta-data android:name="com.google.android.gms.car.application" android:resource="@xml/automotive_app_desc" />
         <provider

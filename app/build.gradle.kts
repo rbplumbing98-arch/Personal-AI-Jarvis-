@@ -7,6 +7,7 @@ android {
     compileSdk = 35
     defaultConfig {
         applicationId = "com.jarvis.assistant"
+        manifestPlaceholders["appLabel"] = "J.A.R.V.I.S."
         minSdk = 26
         targetSdk = 34
         versionCode = System.getenv("JARVIS_VERSION_CODE")?.toIntOrNull() ?: 4
@@ -21,6 +22,10 @@ android {
         }
     }
     buildTypes {
+        getByName("debug") {
+            applicationIdSuffix = ".test"
+            manifestPlaceholders["appLabel"] = "J.A.R.V.I.S. Test"
+        }
         getByName("release") {
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
