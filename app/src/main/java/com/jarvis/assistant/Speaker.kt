@@ -195,6 +195,7 @@ object Speaker {
             val buffer = ByteArray(4096)
             val initial = java.io.ByteArrayOutputStream()
             var started = false
+            var totalBytesWritten = 0L
             connection.inputStream.use { input ->
                 while (current == generation) {
                     val count = input.read(buffer)
@@ -207,7 +208,10 @@ object Speaker {
                         val first = initial.toByteArray()
                         var offset = 0
                         while (offset < first.size && current == generation) {
-                            offset += track.write(first, offset, first.size - offset, AudioTrack.WRITE_BLOCKING)
+                            val written = track.write(first, offset, first.size - offset, AudioTrack.WRITE_BLOCKING)
+                            if (written < 0) throw IllegalStateException("Audio playback stopped unexpectedly.")
+                            offset += written
+                            totalBytesWritten += written
                         }
                         initial.reset()
                         started = true
@@ -217,6 +221,7 @@ object Speaker {
                             val written = track.write(buffer, offset, count - offset, AudioTrack.WRITE_BLOCKING)
                             if (written < 0) throw IllegalStateException("Audio playback stopped unexpectedly.")
                             offset += written
+                            totalBytesWritten += written
                         }
                     }
                 }
@@ -231,14 +236,15 @@ object Speaker {
                     val written = track.write(first, offset, first.size - offset, AudioTrack.WRITE_BLOCKING)
                     if (written < 0) break
                     offset += written
+                    totalBytesWritten += written
                 }
             }
             if (current == generation && track.playState == AudioTrack.PLAYSTATE_PLAYING) {
-                val deadline = System.currentTimeMillis() + 15000
-                while (current == generation && track.playbackHeadPosition.toLong() * 2 < track.getPlaybackHeadPosition().toLong() * 2 && System.currentTimeMillis() < deadline) {
+                val expectedFrames = totalBytesWritten / 2L
+                val deadline = System.currentTimeMillis() + 30000
+                while (current == generation && track.playbackHeadPosition.toLong() < expectedFrames && System.currentTimeMillis() < deadline) {
                     Thread.sleep(20)
                 }
-                Thread.sleep(120)
             }
         } finally {
             connection.disconnect()
