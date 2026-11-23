@@ -68,175 +68,126 @@ class MainActivity : Activity() {
         }
         Speaker.init(this)
 
-        val blue = Color.parseColor("#D99A24")
-        val light = Color.parseColor("#F5D58A")
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setBackgroundColor(Color.parseColor("#03070B"))
-            fitsSystemWindows = true
-        }
+        val gold = Color.parseColor("#D9A441")
+        val light = Color.parseColor("#F5DDA5")
+        val muted = Color.parseColor("#B9AE96")
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(px(10), px(12), px(12), px(12))
+            setPadding(px(16), px(14), px(16), px(18))
+            setBackgroundColor(Color.parseColor("#050709"))
         }
-
-        val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        status = TextView(this).apply { text = "J.A.R.V.I.S.  •  ONLINE"; setTextColor(blue); textSize = 11f; letterSpacing = 0.15f }
-        top.addView(status, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, 0, 0, px(8)) }
+        val brand = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        brand.addView(TextView(this).apply { text = "J.A.R.V.I.S."; setTextColor(light); textSize = 19f; letterSpacing = 0.12f })
+        brand.addView(TextView(this).apply { text = "QUANTUM CORE  •  PERSONAL AI"; setTextColor(gold); textSize = 8f; letterSpacing = 0.18f })
+        top.addView(brand, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        status = TextView(this).apply { text = "● ONLINE"; setTextColor(gold); textSize = 10f; gravity = Gravity.CENTER_VERTICAL }
+        top.addView(status)
         top.addView(Button(this).apply {
-            text = "UPDATE"; textSize = 11f; setTextColor(light); setBackgroundColor(Color.TRANSPARENT)
-            setOnClickListener { checkForUpdates() }
-        })
-        top.addView(Button(this).apply {
-            text = "MODELS"; textSize = 11f; setTextColor(light); setBackgroundColor(Color.TRANSPARENT)
-            setOnClickListener { openModelManager() }
-        })
-        top.addView(Button(this).apply {
-            text = "SETTINGS"; textSize = 11f; setTextColor(light); setBackgroundColor(Color.TRANSPARENT)
-            setOnClickListener { openSettings() }
-        })
+            text = "☰"; textSize = 21f; setTextColor(light); setBackgroundColor(Color.TRANSPARENT)
+            contentDescription = "Open JARVIS control menu"
+            setOnClickListener { showControlMenu() }
+        }, LinearLayout.LayoutParams(px(48), px(48)))
         content.addView(top)
+        content.addView(View(this).apply { setBackgroundColor(Color.parseColor("#59421F")) },
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(1)))
 
-        hud = HudView(this)
         val hubLabel = TextView(this).apply {
-            text = "QUANTUM CORE  /  3D HOLOGRAPHIC INTERFACE"
-            setTextColor(Color.parseColor("#E9B84E")); textSize = 11f; letterSpacing = 0.32f
-            gravity = Gravity.CENTER; setPadding(0, px(10), 0, px(2))
+            text = "QUANTUM CORE  /  CINEMATIC INTERFACE"
+            setTextColor(gold); textSize = 10f; letterSpacing = 0.24f
+            gravity = Gravity.CENTER; setPadding(0, px(12), 0, 0)
         }
         content.addView(hubLabel)
-        content.addView(hud, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(310)))
+        hud = HudView(this)
+        content.addView(hud, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(380))
+            .apply { setMargins(0, px(2), 0, 0) })
+        content.addView(TextView(this).apply {
+            text = "SYSTEM CORE  •  ACTIVE"; setTextColor(light); textSize = 9f
+            letterSpacing = 0.2f; gravity = Gravity.CENTER; setPadding(0, 0, 0, px(8))
+        })
 
-        val indicators = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER
-            setPadding(0, px(6), 0, px(10))
-        }
+        val indicators = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, px(2), 0, px(12)) }
         fun indicator(label: String, value: String, color: Int): TextView = TextView(this).apply {
-            text = label + "\n" + value; textSize = 9f; gravity = Gravity.CENTER
+            text = "$label\n$value"; textSize = 8f; gravity = Gravity.CENTER
             setTextColor(color); setPadding(px(5), px(7), px(5), px(7))
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#17140E")); setStroke(px(1), Color.parseColor("#6B5126"))
+                setColor(Color.parseColor("#14110B")); setStroke(px(1), Color.parseColor("#6B5126"))
                 cornerRadius = px(8).toFloat()
             }
         }
-        indicators.addView(indicator("VOICE", "READY", light), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(4), 0) })
+        indicators.addView(indicator("VOICE", "READY", light),
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(5), 0) })
         val localReady = LocalAi.hasModel(this)
-        val activeKeyMissing = if (store.aiProvider == "nvidia") store.nvidiaApiKey.isBlank() else if (store.aiProvider == "anthropic") store.apiKey.isBlank() else !localReady
-        val aiLabel = if (store.aiProvider == "local") if (localReady) "LOCAL READY" else "MODEL NEEDED" else store.aiProvider.uppercase(Locale.ROOT)
-        indicators.addView(indicator("AI CORE", aiLabel, if (activeKeyMissing) Color.parseColor("#E5A33A") else light), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(4), 0) })
-        indicators.addView(indicator("MEMORY", "LOCAL", light), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(4), 0) })
+        val activeKeyMissing = if (store.aiProvider == "nvidia") store.nvidiaApiKey.isBlank()
+            else if (store.aiProvider == "anthropic") store.apiKey.isBlank() else !localReady
+        val aiLabel = if (store.aiProvider == "local") if (localReady) "LOCAL READY" else "MODEL NEEDED"
+            else store.aiProvider.uppercase(Locale.ROOT)
+        indicators.addView(indicator("AI CORE", aiLabel, if (activeKeyMissing) Color.parseColor("#E5A33A") else light),
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(5), 0) })
         val network = (getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager).activeNetwork != null
-        indicators.addView(indicator("NETWORK", if (network) "CONNECTED" else "OFFLINE", if (network) light else Color.parseColor("#E5A33A")), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        indicators.addView(indicator("NETWORK", if (network) "CONNECTED" else "OFFLINE",
+            if (network) light else Color.parseColor("#E5A33A")),
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         content.addView(indicators)
 
-        val panels = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
-        val liveRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
-        val weatherCard = panel("LIVE WEATHER • CENTURION", "Connecting to weather feed…")
+        val weatherCard = panel("LIVE WEATHER  /  CENTURION", "Connecting to weather feed…")
         weatherView = weatherCard.getChildAt(1) as TextView
-        liveRow.addView(weatherCard, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(5), 0) })
-        val timeCard = panel("PRETORIA • LOCAL TIME", "Loading local time…")
+        content.addView(weatherCard, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            .apply { setMargins(0, 0, 0, px(9)) })
+        val timeCard = panel("LOCAL TIME  /  AFRICA-JOHANNESBURG", "Loading local time…")
         clockView = timeCard.getChildAt(1) as TextView
-        liveRow.addView(timeCard, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        panels.addView(liveRow)
-        panels.addView(panel("TASKS / MEMORY", store.notes().size.toString() + " SAVED NOTES     •     ON-DEVICE MEMORY"))
-        content.addView(panels)
+        content.addView(timeCard, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            .apply { setMargins(0, 0, 0, px(10)) })
         clockTick.run()
         weatherView?.let { refreshWeather(it) }
 
         voiceStatus = TextView(this).apply {
-            text = if (store.elevenKey.isBlank()) "VOICE • Add your ElevenLabs key in Settings" else "VOICE • ElevenLabs configured"
-            setTextColor(blue); textSize = 10f; setPadding(px(4), px(4), px(4), 0)
+            text = if (store.elevenKey.isBlank()) "VOICE SYSTEM  •  Android voice fallback" else "VOICE SYSTEM  •  ElevenLabs configured"
+            setTextColor(gold); textSize = 9f; setPadding(px(3), px(4), px(3), 0)
         }
         content.addView(voiceStatus)
-        caption = TextView(this).apply { setTextColor(light); textSize = 16f; minLines = 2; setPadding(px(4), px(8), px(4), px(4)) }
-        you = TextView(this).apply { setTextColor(Color.parseColor("#C58A1B")); textSize = 12f; setPadding(px(4), 0, px(4), px(8)) }
-        content.addView(caption)
-        content.addView(you)
+        caption = TextView(this).apply { setTextColor(light); textSize = 15f; minLines = 2; setPadding(px(3), px(8), px(3), px(4)) }
+        you = TextView(this).apply { setTextColor(Color.parseColor("#C99A43")); textSize = 11f; setPadding(px(3), 0, px(3), px(7)) }
+        content.addView(caption); content.addView(you)
 
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#11100D")); setStroke(px(1), Color.parseColor("#70552A"))
+                cornerRadius = px(12).toFloat()
+            }
+            setPadding(px(8), px(2), px(5), px(2))
+        }
         val input = EditText(this).apply {
-            hint = "Speak or type a command…"
-            setHintTextColor(Color.parseColor("#765015"))
-            setTextColor(light)
-            isSingleLine = true
-            imeOptions = EditorInfo.IME_ACTION_SEND
+            hint = "Talk to JARVIS or type a command…"; setHintTextColor(Color.parseColor("#8C7955"))
+            setTextColor(light); textSize = 14f; isSingleLine = true; imeOptions = EditorInfo.IME_ACTION_SEND
+            setBackgroundColor(Color.TRANSPARENT)
             setOnEditorActionListener { v, actionId, _ ->
                 if (actionId == EditorInfo.IME_ACTION_SEND) { val t = v.text.toString(); v.text = ""; ask(t); true } else false
             }
         }
-        row.addView(input, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        row.addView(input, LinearLayout.LayoutParams(0, px(54), 1f))
         row.addView(Button(this).apply {
-            text = "◉ MIC"; setTextColor(light); setBackgroundColor(Color.parseColor("#38270D"))
-            setOnClickListener { micTapped() }
-        }, LinearLayout.LayoutParams(px(72), px(56)))
+            text = "◉"; textSize = 20f; setTextColor(light); setBackgroundColor(Color.parseColor("#38270D"))
+            contentDescription = "Activate microphone"; setOnClickListener { micTapped() }
+        }, LinearLayout.LayoutParams(px(54), px(48)))
         content.addView(row)
-
-        val quick = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, px(8), 0, px(8)) }
-        fun quickAction(label: String, prompt: String) {
-            quick.addView(Button(this).apply {
-                text = label; textSize = 9f; setTextColor(light)
-                setBackgroundColor(Color.parseColor("#182A35"))
-                setOnClickListener { input.setText(prompt); input.setSelection(input.text.length); input.requestFocus() }
-            }, LinearLayout.LayoutParams(0, px(44), 1f).apply { setMargins(0, 0, px(4), 0) })
-        }
-        quickAction("MUSIC", "play music")
-        quickAction("NAV", "navigate to ")
-        quickAction("REMIND", "remind me to ")
-        quickAction("CALL", "call ")
-        content.addView(quick)
-
-        val rail = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            setPadding(px(4), px(14), px(4), px(10))
-            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.parseColor("#10100D"), Color.parseColor("#070A0D")))
-                .apply { setStroke(px(1), Color.parseColor("#3B2D14")) }
-        }
-        rail.addView(TextView(this).apply {
-            text = "J"; gravity = Gravity.CENTER; textSize = 17f
-            setTextColor(Color.parseColor("#E6B44A")); setPadding(0, px(4), 0, px(18))
-        })
-        fun railButton(symbol: String, hint: String, action: () -> Unit) {
-            val item = TextView(this).apply {
-                text = symbol; gravity = Gravity.CENTER; textSize = 18f
-                setTextColor(Color.parseColor("#D9B45E"))
-                background = GradientDrawable().apply {
-                    setColor(Color.parseColor("#17160F"))
-                    setStroke(px(1), Color.parseColor("#51401F"))
-                    cornerRadius = px(9).toFloat()
-                }
-                setPadding(0, px(10), 0, px(10))
-                contentDescription = hint
-                setOnClickListener { action() }
-            }
-            rail.addView(item, LinearLayout.LayoutParams(px(40), px(44)).apply { setMargins(0, 0, 0, px(9)) })
-        }
-        railButton("⌂", "Home") { show("Quantum Core is standing by, sir.") }
-        railButton("◉", "AI models") { openModelManager() }
-        railButton("▤", "Memory") {
-            AlertDialog.Builder(this).setTitle("J.A.R.V.I.S. MEMORY")
-                .setMessage(store.notes().takeLast(20).joinToString("\n\n").ifBlank { "No saved notes yet." })
-                .setPositiveButton("CLOSE", null).show()
-        }
-        railButton("♫", "Music") { ask("play music") }
-        railButton("⌖", "Voice input") { micTapped() }
-        railButton("⚙", "Settings") { openSettings() }
-        root.addView(rail, LinearLayout.LayoutParams(px(50), ViewGroup.LayoutParams.MATCH_PARENT))
-        root.addView(content, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        content.addView(Button(this).apply {
+            text = "■  STOP AUDIO"; textSize = 9f; setTextColor(muted); setBackgroundColor(Color.TRANSPARENT)
+            setOnClickListener { Speaker.stop(); hud.mode = 0; status.text = "● ONLINE" }
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(38)))
 
         setContentView(ScrollView(this).apply {
-            isFillViewport = true
-            setBackgroundColor(Color.parseColor("#04080C"))
-            addView(root)
+            isFillViewport = true; setBackgroundColor(Color.parseColor("#050709")); addView(content)
         })
 
         Speaker.onState = { on ->
-            runOnUiThread { hud.mode = if (on) 2 else 0; status.text = if (on) "SPEAKING" else "ONLINE" }
+            runOnUiThread { hud.mode = if (on) 2 else 0; status.text = if (on) "● SPEAKING" else "● ONLINE" }
         }
         voice = VoiceInput(
             this,
             { t -> runOnUiThread { ask(t) } },
-            { on -> runOnUiThread { hud.mode = if (on) 1 else 0; status.text = if (on) "LISTENING" else "ONLINE" } },
+            { on -> runOnUiThread { hud.mode = if (on) 1 else 0; status.text = if (on) "● LISTENING" else "● ONLINE" } },
             { msg -> runOnUiThread { show(msg) } }
         )
 
@@ -245,8 +196,40 @@ class MainActivity : Activity() {
         show("$hello, ${store.name.ifBlank { "sir" }}. All systems are online. How may I help?")
     }
 
+
+    private fun showControlMenu() {
+        val items = arrayOf("AI Models", "Memory", "Music & Spotify", "Voice settings",
+            "General settings", "Diagnostics", "Connections", "System tools", "Check for updates")
+        AlertDialog.Builder(this)
+            .setTitle("J.A.R.V.I.S.  /  CONTROL MENU")
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> openModelManager()
+                    1 -> AlertDialog.Builder(this).setTitle("J.A.R.V.I.S. MEMORY")
+                        .setMessage(store.notes().takeLast(20).joinToString("\n\n").ifBlank { "No saved notes yet." })
+                        .setPositiveButton("CLOSE", null).show()
+                    2 -> ask("play music")
+                    3, 4, 6 -> openSettings()
+                    5 -> showDiagnostics()
+                    7 -> startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+                    8 -> checkForUpdates()
+                }
+            }
+            .setNegativeButton("CLOSE", null).show()
+    }
+
+    private fun showDiagnostics() {
+        val network = (getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager).activeNetwork != null
+        val model = if (LocalAi.hasModel(this)) "Installed" else "Not installed"
+        val provider = store.aiProvider.uppercase(Locale.ROOT)
+        val voiceEngine = if (store.elevenKey.isBlank()) "Android fallback" else "ElevenLabs configured"
+        val details = "AI mode: $provider\nOffline GGUF: $model\nNetwork: \${if (network) "Connected" else "Offline"}\nVoice: $voiceEngine\nSaved notes: \${store.notes().size}"
+        AlertDialog.Builder(this).setTitle("SYSTEM DIAGNOSTICS").setMessage(details)
+            .setPositiveButton("CLOSE", null).setNeutralButton("SETTINGS") { _, _ -> openSettings() }.show()
+    }
+
     private fun checkForUpdates() {
-        status.text = "CHECKING UPDATES"
+        status.text = "● CHECKING"
         Thread {
             var connection: HttpURLConnection? = null
             try {
@@ -277,7 +260,7 @@ class MainActivity : Activity() {
                 }
                 val downloadUrl = apkUrl
                 runOnUiThread {
-                    status.text = "ONLINE"
+                    status.text = "● ONLINE"
                     if (latestCode > installedCode && !downloadUrl.isNullOrBlank()) {
                         AlertDialog.Builder(this)
                             .setTitle("J.A.R.V.I.S. update available")
@@ -363,7 +346,7 @@ class MainActivity : Activity() {
         if (t.isBlank()) return
         you.text = "You: $t"
         hud.mode = 3
-        status.text = "THINKING"
+        status.text = "● THINKING"
         brain.handle(t) { show(it) }
     }
 
@@ -391,17 +374,17 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(px(9), px(10), px(7), px(10))
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#0B1721"))
-                setStroke(px(1), Color.parseColor("#294452"))
+                setColor(Color.parseColor("#100E0A"))
+                setStroke(px(1), Color.parseColor("#6B5126"))
                 cornerRadius = px(10).toFloat()
             }
         }
         card.addView(TextView(this).apply {
-            text = title; textSize = 9f; letterSpacing = 0.08f
+            text = title; textSize = 9f; letterSpacing = 0.12f
             setTextColor(Color.parseColor("#E2B65F"))
         })
         card.addView(TextView(this).apply {
-            text = body; textSize = 10f; setTextColor(Color.parseColor("#B6C9D2"))
+            text = body; textSize = 10f; setTextColor(Color.parseColor("#D2C5A8"))
             setPadding(0, px(6), 0, 0)
         })
         return card
@@ -450,7 +433,7 @@ class MainActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == MODEL_PICK_REQUEST && resultCode == RESULT_OK) {
             val uri = data?.data ?: return
-            status.text = "IMPORTING MODEL"
+            status.text = "● IMPORTING MODEL"
             Thread {
                 try {
                     LocalAi.importModel(this, uri)
