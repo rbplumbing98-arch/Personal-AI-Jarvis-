@@ -196,7 +196,7 @@ class MainActivity : Activity() {
         }
         fun railAction(glyph: String, label: String, action: () -> Unit) {
             rail.addView(Button(this).apply {
-                text = "$glyph\\n$label"; textSize = 8f; isAllCaps = false
+                text = "$glyph\n$label"; textSize = 8f; isAllCaps = false
                 setTextColor(Color.parseColor("#E5BD70")); setBackgroundColor(Color.TRANSPARENT)
                 contentDescription = label; setOnClickListener { action() }
             }, LinearLayout.LayoutParams(px(48), px(58)))
