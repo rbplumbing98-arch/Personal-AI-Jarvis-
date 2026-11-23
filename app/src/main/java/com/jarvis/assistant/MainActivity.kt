@@ -29,6 +29,7 @@ import java.util.Locale
 import java.net.HttpURLConnection
 import java.net.URL
 import org.json.JSONObject
+import kotlinx.coroutines.launch
 
 class MainActivity : Activity() {
     private lateinit var store: Store
@@ -364,9 +365,9 @@ class MainActivity : Activity() {
     private fun openModelManager() {
         val ready = LocalAi.hasModel(this)
         val message = if (ready) {
-            "OFFLINE BRAIN READY\\nQwen 0.5B GGUF is installed on this phone. JARVIS can answer without internet or API keys.\\n\\nYou can also import another compatible .gguf model."
+            "OFFLINE BRAIN READY\nQwen 0.5B GGUF is installed on this phone. JARVIS can answer without internet or API keys.\n\nYou can also import another compatible .gguf model."
         } else {
-            "OFFLINE BRAIN NOT INSTALLED\\nDownload the recommended Qwen 0.5B GGUF model (${LocalAi.MODEL_SIZE_LABEL}) over Wi-Fi, or import a GGUF file you already have.\\n\\nThe model is stored privately on this phone and is not included in app updates."
+            "OFFLINE BRAIN NOT INSTALLED\nDownload the recommended Qwen 0.5B GGUF model (${LocalAi.MODEL_SIZE_LABEL}) over Wi-Fi, or import a GGUF file you already have.\n\nThe model is stored privately on this phone and is not included in app updates."
         }
         AlertDialog.Builder(this)
             .setTitle("J.A.R.V.I.S. • LOCAL AI MODELS")
