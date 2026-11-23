@@ -135,6 +135,10 @@ class Store(context: Context) {
         get() = sp.getString("nvidia_model", "meta/llama-3.3-70b-instruct") ?: "meta/llama-3.3-70b-instruct"
         set(v) { sp.edit().putString("nvidia_model", v.trim().ifBlank { "meta/llama-3.3-70b-instruct" }).apply() }
 
+    var anthropicModel: String
+        get() = sp.getString("anthropic_model", "claude-sonnet-4-5") ?: "claude-sonnet-4-5"
+        set(v) { sp.edit().putString("anthropic_model", v.trim().ifBlank { "claude-sonnet-4-5" }).apply() }
+
     var voiceId: String
         get() = sp.getString("voice_id", DEFAULT_VOICE)?.ifBlank { DEFAULT_VOICE } ?: DEFAULT_VOICE
         set(v) { sp.edit().putString("voice_id", v.ifBlank { DEFAULT_VOICE }).apply() }
@@ -239,6 +243,31 @@ class Store(context: Context) {
             }
         }
     }
+
+    /** Small rolling conversation window for contextual follow-up questions. */
+    data class ChatTurn(val role: String, val text: String)
+
+    fun conversation(): List<ChatTurn> {
+        val a = arr("conversation")
+        return (0 until a.length()).mapNotNull { i ->
+            val o = a.optJSONObject(i) ?: return@mapNotNull null
+            val role = o.optString("role")
+            val text = o.optString("text").trim()
+            if ((role != "user" && role != "assistant") || text.isBlank()) null else ChatTurn(role, text)
+        }
+    }
+
+    fun rememberTurn(role: String, text: String) {
+        if (role != "user" && role != "assistant") return
+        val clean = text.trim().take(1800)
+        if (clean.isBlank()) return
+        val a = arr("conversation")
+        a.put(JSONObject().put("role", role).put("text", clean).put("at", System.currentTimeMillis()))
+        while (a.length() > 12) a.remove(0)
+        sp.edit().putString("conversation", a.toString()).apply()
+    }
+
+    fun clearConversation() { sp.edit().remove("conversation").remove("cache").apply() }
 
     fun notes(): List<String> = list("notes")
     fun addNote(t: String) = add("notes", t)
