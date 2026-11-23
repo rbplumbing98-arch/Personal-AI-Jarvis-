@@ -77,8 +77,8 @@ jobs:
           path: app/build/outputs/apk/final/jarvis.apk
           if-no-files-found: error
           retention-days: 30
-      - name: Publish JARVIS APK
-        if: github.event_name != 'pull_request'
+      - name: Publish stable signed JARVIS APK
+        if: github.event_name != 'pull_request' && steps.signing.outputs.ready == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: jarvis-build-${{ github.run_number }}
