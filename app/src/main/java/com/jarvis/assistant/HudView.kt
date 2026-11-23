@@ -4,113 +4,173 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
-import android.graphics.Path
 import android.view.View
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 
-/** Quantum Core holographic reactor. mode: 0 idle, 1 listening, 2 speaking, 3 thinking. */
+/** Cinematic Quantum Core reactor. mode: 0 idle, 1 listening, 2 speaking, 3 thinking. */
 class HudView(context: Context) : View(context) {
     var mode = 0
-        set(value) { field = value; invalidate() }
+        set(value) { field = value.coerceIn(0, 3); invalidate() }
+
     private var rotation = 0f
-    private var last = 0L
-    private val line = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+    private var lastFrame = 0L
+    private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val cyan = Color.rgb(239, 180, 67)
-    private val ice = Color.rgb(255, 232, 183)
-    private val gold = Color.rgb(224, 169, 79)
-    private fun dp(v: Float) = v * resources.displayMetrics.density
+    private val gold = Color.rgb(218, 166, 72)
+    private val paleGold = Color.rgb(255, 225, 164)
+    private val dimGold = Color.rgb(119, 82, 32)
 
-    override fun onDraw(c: Canvas) {
-        super.onDraw(c)
+    private fun dp(value: Float) = value * resources.displayMetrics.density
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
         val now = System.nanoTime()
-        val dt = if (last == 0L) 0f else ((now-last)/1e9f).coerceAtMost(.05f)
-        last = now
-        rotation = (rotation + dt * when(mode) { 1,2 -> 48f; 3 -> 95f; else -> 12f }) % 360f
-        val cx = width/2f
-        val cy = height*.48f
-        val r = min(width*.43f, height*.39f).coerceAtLeast(dp(65f))
+        val delta = if (lastFrame == 0L) 0f else ((now - lastFrame) / 1e9f).coerceAtMost(.05f)
+        lastFrame = now
+        val speed = when (mode) { 1 -> 38f; 2 -> 54f; 3 -> 82f; else -> 8f }
+        rotation = (rotation + delta * speed) % 360f
 
-        fill.shader = RadialGradient(cx,cy,r*1.5f,intArrayOf(0x55F2B84B,0x22C58A25,Color.TRANSPARENT),null,Shader.TileMode.CLAMP)
-        c.drawCircle(cx,cy,r*1.5f,fill); fill.shader = null
+        val cx = width / 2f
+        val cy = height * .47f
+        val radius = min(width * .36f, height * .34f).coerceAtLeast(dp(62f))
+        val pulse = if (mode == 0) 1f else 1f + .025f * kotlin.math.sin(rotation * PI.toFloat() / 45f)
+        val r = radius * pulse
 
-        line.color=gold; line.alpha=125; line.strokeWidth=dp(1f)
-        c.drawCircle(cx,cy,r*1.18f,line)
-        c.save(); c.rotate(rotation,cx,cy)
-        line.color=gold; line.alpha=190; line.strokeWidth=dp(2.5f)
-        c.drawArc(RectF(cx-r*1.08f,cy-r*1.08f,cx+r*1.08f,cy+r*1.08f),-35f,105f,false,line)
-        line.color=gold; line.alpha=220; line.strokeWidth=dp(2f)
-        c.drawArc(RectF(cx-r*1.08f,cy-r*1.08f,cx+r*1.08f,cy+r*1.08f),150f,75f,false,line)
-        c.restore()
+        // Atmospheric glow and understated orbital field.
+        fill.shader = RadialGradient(cx, cy, r * 1.9f,
+            intArrayOf(0x665C3A0D, 0x223B2A12, Color.TRANSPARENT), null, Shader.TileMode.CLAMP)
+        canvas.drawCircle(cx, cy, r * 1.9f, fill)
+        fill.shader = null
 
-        fill.shader = RadialGradient(cx-r*.25f,cy-r*.28f,r*.95f,
-            intArrayOf(0xFF60400F.toInt(),0xFF21180A.toInt(),0xFF050708.toInt()),null,Shader.TileMode.CLAMP)
-        c.drawCircle(cx,cy,r*.78f,fill); fill.shader=null
-        line.color=gold; line.alpha=225; line.strokeWidth=dp(1.4f)
-        c.drawCircle(cx,cy,r*.78f,line)
+        stroke.color = dimGold
+        stroke.alpha = 145
+        stroke.strokeWidth = dp(1f)
+        canvas.drawCircle(cx, cy, r * 1.58f, stroke)
+        canvas.drawCircle(cx, cy, r * 1.43f, stroke)
 
-        // Curved latitude lines and rotating longitude ellipses create a holographic globe.
+        // Segmented outer telemetry ring.
+        canvas.save()
+        canvas.rotate(-rotation * .42f, cx, cy)
+        val outer = RectF(cx-r*1.48f, cy-r*1.48f, cx+r*1.48f, cy+r*1.48f)
+        for (i in 0 until 72) {
+            val major = i % 6 == 0
+            stroke.color = if (major) paleGold else gold
+            stroke.alpha = if (major) 190 else 65
+            stroke.strokeWidth = if (major) dp(2f) else dp(.8f)
+            val start = i * 5f
+            canvas.drawArc(outer, start, if (major) 2.8f else 1.1f, false, stroke)
+        }
+        canvas.restore()
+
+        // Floating orbital arcs.
+        canvas.save()
+        canvas.rotate(rotation, cx, cy)
+        stroke.color = gold
+        stroke.alpha = 210
+        stroke.strokeWidth = dp(2f)
+        val orbit = RectF(cx-r*1.18f, cy-r*.72f, cx+r*1.18f, cy+r*.72f)
+        canvas.drawArc(orbit, 205f, 112f, false, stroke)
+        stroke.alpha = 125
+        canvas.drawArc(orbit, 25f, 82f, false, stroke)
+        canvas.restore()
+
+        // Dark metallic reactor shell.
+        fill.shader = RadialGradient(cx-r*.22f, cy-r*.28f, r,
+            intArrayOf(0xFF6B4A19.toInt(), 0xFF30210D.toInt(), 0xFF100D08.toInt(), 0xFF050709.toInt()),
+            null, Shader.TileMode.CLAMP)
+        canvas.drawCircle(cx, cy, r*.91f, fill)
+        fill.shader = null
+        stroke.color = paleGold
+        stroke.alpha = 165
+        stroke.strokeWidth = dp(1.2f)
+        canvas.drawCircle(cx, cy, r*.91f, stroke)
+
+        // Holographic longitude and latitude.
         for (i in -2..2) {
-            val offset=i*.23f
-            val y=cy+offset*r
-            val half=r*.78f*kotlin.math.sqrt((1f-offset*offset).coerceAtLeast(.08f))
-            line.color=gold; line.alpha=if(i==0) 200 else 115; line.strokeWidth=dp(1f)
-            c.drawOval(RectF(cx-half,y-half*.23f,cx+half,y+half*.23f),line)
+            val offset = i * .25f
+            val y = cy + offset*r*.86f
+            val half = r*.86f*kotlin.math.sqrt((1f-offset*offset).coerceAtLeast(.08f))
+            stroke.color = gold
+            stroke.alpha = if (i == 0) 155 else 75
+            stroke.strokeWidth = dp(.8f)
+            canvas.drawOval(RectF(cx-half, y-half*.19f, cx+half, y+half*.19f), stroke)
         }
         for (i in 0..3) {
-            c.save(); c.rotate(rotation*(if(i%2==0) 1f else -1f)+i*45f,cx,cy)
-            line.color=if(i==0) gold else ice; line.alpha=if(i==0) 220 else 125
-            line.strokeWidth=dp(1f)
-            val w=r*(.24f+i*.12f)
-            c.drawOval(RectF(cx-w,cy-r*.78f,cx+w,cy+r*.78f),line)
-            c.restore()
+            canvas.save()
+            canvas.rotate(rotation * if (i % 2 == 0) 1f else -1f + i*31f, cx, cy)
+            stroke.color = if (i == 0) paleGold else gold
+            stroke.alpha = if (i == 0) 190 else 90
+            stroke.strokeWidth = dp(1f)
+            val halfWidth = r*(.25f+i*.11f)
+            canvas.drawOval(RectF(cx-halfWidth, cy-r*.89f, cx+halfWidth, cy+r*.89f), stroke)
+            canvas.restore()
         }
 
-        fill.shader=RadialGradient(cx,cy,r*.42f,intArrayOf(Color.WHITE,0xFFFFE2A0.toInt(),0xFFFFB52E.toInt(),0x00FF9D16),null,Shader.TileMode.CLAMP)
-        c.drawCircle(cx,cy,r*.40f,fill); fill.shader=null
+        // Luminous inner energy chamber.
+        fill.shader = RadialGradient(cx-r*.12f, cy-r*.16f, r*.56f,
+            intArrayOf(Color.WHITE, 0xFFFFE7B5.toInt(), 0xFFFFC45A.toInt(), 0x55D98D24, Color.TRANSPARENT),
+            null, Shader.TileMode.CLAMP)
+        canvas.drawCircle(cx, cy, r*.53f, fill)
+        fill.shader = null
 
-        // Layered reactor rings and radial energy spokes add depth to the central core.
-        line.color=ice; line.alpha=220; line.strokeWidth=dp(1.4f)
-        c.drawCircle(cx,cy,r*.48f,line)
-        line.color=gold; line.alpha=180; line.strokeWidth=dp(2f)
-        c.drawCircle(cx,cy,r*.57f,line)
-        c.save(); c.rotate(-rotation*1.35f,cx,cy)
-        for (i in 0 until 24) {
-            val angle=(i*15f)*PI.toFloat()/180f
-            val x1=cx+cos(angle)*r*.47f; val y1=cy+sin(angle)*r*.47f
-            val x2=cx+cos(angle)*r*.55f; val y2=cy+sin(angle)*r*.55f
-            line.color=if(i%3==0) ice else gold
-            line.alpha=if(i%3==0) 220 else 110
-            line.strokeWidth=if(i%3==0) dp(1.5f) else dp(.7f)
-            c.drawLine(x1,y1,x2,y2,line)
-        }
-        c.restore()
-        fill.color=Color.WHITE; c.drawCircle(cx,cy,r*.075f,fill)
+        stroke.color = paleGold
+        stroke.alpha = 220
+        stroke.strokeWidth = dp(1.5f)
+        canvas.drawCircle(cx, cy, r*.52f, stroke)
+        stroke.color = gold
+        stroke.alpha = 190
+        stroke.strokeWidth = dp(2f)
+        canvas.drawCircle(cx, cy, r*.62f, stroke)
 
-        for(i in 0 until 6) {
-            val a=(rotation*(if(i%2==0) 1f else -1f)+i*60f)*PI.toFloat()/180f
-            val x=cx+cos(a)*r*.98f; val y=cy+sin(a)*r*.42f
-            fill.color=if(i%2==0) gold else ice
-            c.drawCircle(x,y,dp(3f),fill)
-            line.color=fill.color; line.alpha=110; line.strokeWidth=dp(1f)
-            c.drawCircle(x,y,dp(7f),line)
+        canvas.save()
+        canvas.rotate(-rotation*1.4f, cx, cy)
+        for (i in 0 until 36) {
+            val angle = i * 10f * PI.toFloat()/180f
+            val inner = r*.64f
+            val outerTick = r*(if (i % 3 == 0) .76f else .70f)
+            stroke.color = if (i % 3 == 0) paleGold else gold
+            stroke.alpha = if (i % 3 == 0) 220 else 95
+            stroke.strokeWidth = if (i % 3 == 0) dp(1.5f) else dp(.7f)
+            canvas.drawLine(cx+cos(angle)*inner, cy+sin(angle)*inner,
+                cx+cos(angle)*outerTick, cy+sin(angle)*outerTick, stroke)
+        }
+        canvas.restore()
+
+        fill.color = Color.WHITE
+        canvas.drawCircle(cx, cy, r*.065f, fill)
+        fill.color = paleGold
+        for (i in 0 until 4) {
+            val angle = (rotation*(if (i%2==0) 1f else -1f) + i*90f) * PI.toFloat()/180f
+            val x = cx + cos(angle)*r*1.08f
+            val y = cy + sin(angle)*r*.47f
+            canvas.drawCircle(x, y, dp(2.7f), fill)
+            stroke.color = gold
+            stroke.alpha = 125
+            stroke.strokeWidth = dp(1f)
+            canvas.drawCircle(x, y, dp(7f), stroke)
         }
 
-        val base=height-dp(14f); val left=width*.14f; val span=width*.72f
-        val wave=Path()
-        for(i in 0..72) {
-            val x=left+span*i/72f
-            val amp=if(mode==0) 2f else 7f
-            val y=base+sin((i*.3f+rotation*.08f).toDouble()).toFloat()*dp(amp)
-            if(i==0) wave.moveTo(x,y) else wave.lineTo(x,y)
+        // State-reactive signal trace.
+        val baseline = height - dp(18f)
+        val signal = Path()
+        val amplitude = if (mode == 0) 1.8f else if (mode == 3) 9f else 6f
+        for (i in 0..96) {
+            val x = width*.12f + width*.76f*i/96f
+            val y = baseline + sin((i*.28f + rotation*.09f).toDouble()).toFloat()*dp(amplitude)
+            if (i == 0) signal.moveTo(x, y) else signal.lineTo(x, y)
         }
-        line.color=gold; line.alpha=210; line.strokeWidth=dp(1.5f); c.drawPath(wave,line)
+        stroke.color = gold
+        stroke.alpha = if (mode == 0) 100 else 220
+        stroke.strokeWidth = dp(1.4f)
+        canvas.drawPath(signal, stroke)
+
         postInvalidateOnAnimation()
     }
 }
