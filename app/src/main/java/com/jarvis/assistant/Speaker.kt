@@ -183,7 +183,7 @@ object Speaker {
             }
             val minBuffer = AudioTrack.getMinBufferSize(16000, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
             if (minBuffer <= 0) throw IllegalStateException("This device cannot initialise PCM audio playback.")
-            track = AudioTrack.Builder()
+            val audio = AudioTrack.Builder()
                 .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANT)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
                 .setAudioFormat(AudioFormat.Builder().setSampleRate(16000).setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
@@ -191,7 +191,8 @@ object Speaker {
                 .setBufferSizeInBytes(maxOf(minBuffer, 8192))
                 .setTransferMode(AudioTrack.MODE_STREAM)
                 .build()
-            audioTrack = track
+            track = audio
+            audioTrack = audio
             val buffer = ByteArray(4096)
             val initial = java.io.ByteArrayOutputStream()
             var started = false
@@ -203,12 +204,12 @@ object Speaker {
                     if (!started) {
                         initial.write(buffer, 0, count)
                         if (initial.size() < 8192) continue
-                        track.play()
+                        audio.play()
                         onState?.invoke(true)
                         val first = initial.toByteArray()
                         var offset = 0
                         while (offset < first.size && current == generation) {
-                            val written = track.write(first, offset, first.size - offset, AudioTrack.WRITE_BLOCKING)
+                            val written = audio.write(first, offset, first.size - offset, AudioTrack.WRITE_BLOCKING)
                             if (written < 0) throw IllegalStateException("Audio playback stopped unexpectedly.")
                             offset += written
                             totalBytesWritten += written
@@ -239,10 +240,10 @@ object Speaker {
                     totalBytesWritten += written
                 }
             }
-            if (current == generation && track.playState == AudioTrack.PLAYSTATE_PLAYING) {
+            if (current == generation && audio.playState == AudioTrack.PLAYSTATE_PLAYING) {
                 val expectedFrames = totalBytesWritten / 2L
                 val deadline = System.currentTimeMillis() + 30000
-                while (current == generation && track.playbackHeadPosition.toLong() < expectedFrames && System.currentTimeMillis() < deadline) {
+                while (current == generation && audio.playbackHeadPosition.toLong() < expectedFrames && System.currentTimeMillis() < deadline) {
                     Thread.sleep(20)
                 }
             }
