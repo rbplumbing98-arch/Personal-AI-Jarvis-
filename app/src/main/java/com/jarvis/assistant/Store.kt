@@ -170,12 +170,68 @@ class Store(context: Context) {
         sp.edit().putString(k, a.toString()).apply()
     }
 
+    data class MemoryEntry(val id: String, val category: String, val text: String, val updatedAt: Long)
+
+    fun memories(): List<MemoryEntry> {
+        val a = arr("memory_entries")
+        val saved = (0 until a.length()).mapNotNull { i ->
+            val o = a.optJSONObject(i) ?: return@mapNotNull null
+            val value = o.optString("text").trim()
+            if (value.isBlank()) null else MemoryEntry(o.optString("id", "memory-$i"), o.optString("category", "Personal"), value, o.optLong("updatedAt", 0L))
+        }
+        val known = saved.map { it.text }.toSet()
+        val legacyNotes = notes().filter { it !in known }.mapIndexed { i, value -> MemoryEntry("legacy-note-$i", "Notes", value, 0L) }
+        val legacyFacts = facts().filter { it !in known }.mapIndexed { i, value -> MemoryEntry("legacy-fact-$i", "Personal", value, 0L) }
+        return (saved + legacyNotes + legacyFacts).sortedByDescending { it.updatedAt }
+    }
+
+    fun saveMemory(id: String?, category: String, text: String) {
+        val clean = text.trim()
+        if (clean.isBlank()) return
+        val effectiveId = if (id?.startsWith("legacy-") == true) null else id
+        if (id?.startsWith("legacy-") == true) deleteMemory(id)
+        val a = arr("memory_entries")
+        val next = JSONArray()
+        var replaced = false
+        for (i in 0 until a.length()) {
+            val item = a.optJSONObject(i) ?: continue
+            if (effectiveId != null && item.optString("id") == effectiveId) {
+                next.put(JSONObject().put("id", effectiveId).put("category", category).put("text", clean).put("updatedAt", System.currentTimeMillis()))
+                replaced = true
+            } else next.put(item)
+        }
+        if (!replaced) next.put(JSONObject().put("id", "mem-${System.currentTimeMillis()}").put("category", category).put("text", clean).put("updatedAt", System.currentTimeMillis()))
+        while (next.length() > 300) next.remove(0)
+        sp.edit().putString("memory_entries", next.toString()).apply()
+        if (effectiveId == null) addNote(clean)
+    }
+
+    fun deleteMemory(id: String) {
+        if (id.startsWith("legacy-note-")) {
+            val index = id.substringAfterLast("-").toIntOrNull() ?: return
+            val values = notes().toMutableList()
+            if (index in values.indices) values.removeAt(index)
+            sp.edit().putString("notes", JSONArray(values).toString()).apply()
+            return
+        }
+        if (id.startsWith("legacy-fact-")) {
+            val index = id.substringAfterLast("-").toIntOrNull() ?: return
+            val values = facts().toMutableList()
+            if (index in values.indices) values.removeAt(index)
+            sp.edit().putString("facts", JSONArray(values).toString()).apply()
+            return
+        }
+        val a = arr("memory_entries")
+        val next = JSONArray()
+        for (i in 0 until a.length()) { val item = a.optJSONObject(i) ?: continue; if (item.optString("id") != id) next.put(item) }
+        sp.edit().putString("memory_entries", next.toString()).apply()
+    }
+
     fun notes(): List<String> = list("notes")
     fun addNote(t: String) = add("notes", t)
     fun clearNotes() { sp.edit().remove("notes").apply() }
     fun facts(): List<String> = list("facts")
-    fun addFact(t: String) = add("facts", t)
-    fun skill(k: String): String? = obj("skills").optString(k, "").ifEmpty { null }
+    fun addFact(t: String) = add("facts", t)    fun skill(k: String): String? = obj("skills").optString(k, "").ifEmpty { null }
     fun setSkill(k: String, v: String) {
         val o = obj("skills")
         o.put(k, v)
