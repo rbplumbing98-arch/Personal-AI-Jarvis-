@@ -141,7 +141,7 @@ object Speaker {
     private fun fetch(ctx: Context, key: String, voice: String, raw: String): File? {
         if (key.isBlank() || voice.isBlank()) return null
         val text = raw.take(600)
-        val model = "eleven_multilingual_v2"
+        val model = "eleven_flash_v2_5"
         val settingsKey = "stability=.42;similarity=.78;style=.18;speaker=true"
         val dir = File(ctx.cacheDir, "tts").apply { mkdirs() }
         val hash = MessageDigest.getInstance("SHA-256").digest("$model|$voice|$settingsKey|$text".toByteArray())
@@ -150,12 +150,12 @@ object Speaker {
         if (file.exists() && file.length() > 0) return file
         dir.listFiles()?.takeIf { it.size > 200 }?.sortedBy { it.lastModified() }?.take(60)?.forEach { it.delete() }
 
-        val connection = URL("https://api.elevenlabs.io/v1/text-to-speech/$voice?output_format=mp3_44100_128")
+        val connection = URL("https://api.elevenlabs.io/v1/text-to-speech/$voice/stream?output_format=mp3_44100_128")
             .openConnection() as HttpURLConnection
         try {
             connection.requestMethod = "POST"
-            connection.connectTimeout = 12000
-            connection.readTimeout = 30000
+            connection.connectTimeout = 7000
+            connection.readTimeout = 20000
             connection.doOutput = true
             connection.setRequestProperty("xi-api-key", key)
             connection.setRequestProperty("Content-Type", "application/json")
