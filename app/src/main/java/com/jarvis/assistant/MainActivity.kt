@@ -6,6 +6,10 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
 import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.content.FileProvider
+import java.io.File
+import java.security.MessageDigest
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -137,7 +141,9 @@ class MainActivity : Activity() {
         val modelReady = LocalAi.hasModel(this)
         val diagnosticsText = "AI  •  ${store.aiProvider.uppercase(Locale.ROOT)}\nOFFLINE MODEL  •  ${if (modelReady) "READY" else "NOT INSTALLED"}\nNETWORK  •  ${if (network) "CONNECTED" else "OFFLINE"}"
         intelligenceRow.addView(panel("LEFT CONSOLE  /  DIAGNOSTICS", diagnosticsText), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(5), 0) })
-        intelligenceRow.addView(panel("RIGHT CONSOLE  /  EVENT FEED", "QUANTUM CORE INITIALISED\nVOICE INTERFACE READY\nMEMORY STORE LOCAL"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        val eventCard = panel("RIGHT CONSOLE  /  LIVE ACTIVITY", "QUANTUM CORE INITIALISED\nVOICE INTERFACE READY\nMEMORY CENTRE  •  ${store.memories().size} ENTRIES")
+        eventFeed = eventCard.getChildAt(1) as TextView
+        intelligenceRow.addView(eventCard, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         content.addView(intelligenceRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 0, 0, px(9)) })
 
         val weatherCard = panel("LIVE WEATHER  /  CENTURION", "Connecting to weather feed…")
@@ -321,13 +327,18 @@ class MainActivity : Activity() {
                 connection.requestMethod = "GET"
                 connection.setRequestProperty("Accept", "application/vnd.github+json")
                 if (connection.responseCode != HttpURLConnection.HTTP_OK) {
-                    throw IllegalStateException("No published signed update is available yet.")
+                    throw IllegalStateException("No published update is available yet.")
                 }
                 val release = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
                 val tag = release.optString("tag_name")
                 val releaseUrl = release.optString("html_url")
                 val latestCode = tag.substringAfterLast('-').toLongOrNull() ?: 0L
-                val installedCode = packageManager.getPackageInfo(packageName, 0).versionCode.toLong()
+                val installedCode = if (Build.VERSION.SDK_INT >= 28) {
+                    packageManager.getPackageInfo(packageName, PackageManager.GET_SIGNING_CERTIFICATES).longVersionCode
+                } else {
+                    @Suppress("DEPRECATION")
+                    packageManager.getPackageInfo(packageName, 0).versionCode.toLong()
+                }
                 val assets = release.optJSONArray("assets")
                 var apkUrl: String? = null
                 if (assets != null) {
@@ -345,18 +356,16 @@ class MainActivity : Activity() {
                     if (latestCode > installedCode && !downloadUrl.isNullOrBlank()) {
                         AlertDialog.Builder(this)
                             .setTitle("J.A.R.V.I.S. update available")
-                            .setMessage("A newer signed update is ready. Download it and install it over your existing JARVIS app. Your saved settings and keys should remain in place when the signing certificate matches.")
-                            .setPositiveButton("Download update") { _, _ ->
-                                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl)))
-                            }
-                            .setNegativeButton("Later", null)
+                            .setMessage("Build $latestCode is available. JARVIS will download it and verify the package identity and signing certificate before opening Android's installer. Your current app will not be changed if verification fails.")
+                            .setPositiveButton("VERIFY UPDATE") { _, _ -> downloadAndVerifyUpdate(downloadUrl, releaseUrl) }
+                            .setNegativeButton("LATER", null)
                             .show()
                     } else {
                         AlertDialog.Builder(this)
                             .setTitle("J.A.R.V.I.S. updates")
-                            .setMessage(if (latestCode > 0L) "You are running the latest published update." else "No signed update has been published yet.")
+                            .setMessage(if (latestCode > 0L) "You are running the latest published build." else "No published build number could be read.")
                             .setPositiveButton("OK", null)
-                            .setNeutralButton("Release page") { _, _ ->
+                            .setNeutralButton("RELEASE PAGE") { _, _ ->
                                 if (releaseUrl.isNotBlank()) startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(releaseUrl)))
                             }
                             .show()
@@ -364,17 +373,125 @@ class MainActivity : Activity() {
                 }
             } catch (e: Exception) {
                 runOnUiThread {
-                    status.text = "ONLINE"
-                    AlertDialog.Builder(this)
-                        .setTitle("Update check unavailable")
+                    status.text = "● ONLINE"
+                    AlertDialog.Builder(this).setTitle("Update check unavailable")
                         .setMessage(e.message ?: "Please try again later.")
+                        .setPositiveButton("OK", null).show()
+                }
+            } finally {
+                connection?.disconnect()
+            }
+        }.start()
+    }
+
+    private fun signingDigests(info: android.content.pm.PackageInfo): Set<String> {
+        val signatures = if (Build.VERSION.SDK_INT >= 28) {
+            info.signingInfo?.apkContentsSigners
+        } else {
+            @Suppress("DEPRECATION")
+            info.signatures
+        } ?: return emptySet()
+        return signatures.map { signature ->
+            MessageDigest.getInstance("SHA-256").digest(signature.toByteArray())
+                .joinToString("") { byte -> "%02x".format(byte) }
+        }.toSet()
+    }
+
+    private fun downloadAndVerifyUpdate(downloadUrl: String, releaseUrl: String) {
+        status.text = "● DOWNLOADING"
+        eventFeed?.text = "SECURE UPDATE\nDOWNLOADING RELEASE APK"
+        Thread {
+            var connection: HttpURLConnection? = null
+            var updateFile: File? = null
+            try {
+                val folder = File(cacheDir, "updates").apply { if (!exists() && !mkdirs()) throw IllegalStateException("Could not create update cache.") }
+                updateFile = File(folder, "jarvis-update.apk")
+                connection = URL(downloadUrl).openConnection() as HttpURLConnection
+                connection.connectTimeout = 15000
+                connection.readTimeout = 45000
+                connection.instanceFollowRedirects = true
+                connection.setRequestProperty("Accept", "application/vnd.android.package-archive")
+                if (connection.responseCode !in 200..299) throw IllegalStateException("APK download failed (HTTP ${connection.responseCode}).")
+                val length = connection.contentLengthLong
+                if (length > 250L * 1024L * 1024L) throw IllegalStateException("The update is larger than the allowed 250 MB limit.")
+                connection.inputStream.use { input ->
+                    updateFile.outputStream().use { output ->
+                        val buffer = ByteArray(64 * 1024)
+                        var total = 0L
+                        while (true) {
+                            val count = input.read(buffer)
+                            if (count < 0) break
+                            total += count
+                            if (total > 250L * 1024L * 1024L) throw IllegalStateException("The update exceeded the 250 MB safety limit.")
+                            output.write(buffer, 0, count)
+                        }
+                    }
+                }
+                if (!updateFile.isFile || updateFile.length() < 1_000_000L) throw IllegalStateException("The downloaded APK is incomplete.")
+                val flags = if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
+                val archive = packageManager.getPackageArchiveInfo(updateFile.absolutePath, flags)
+                    ?: throw IllegalStateException("Android could not read the downloaded APK.")
+                if (archive.packageName != packageName) throw IllegalStateException("Update blocked: the APK belongs to a different application.")
+                val currentInfo = packageManager.getPackageInfo(packageName, flags)
+                val currentSignatures = signingDigests(currentInfo)
+                val updateSignatures = signingDigests(archive)
+                if (currentSignatures.isEmpty() || updateSignatures.isEmpty() || currentSignatures != updateSignatures) {
+                    updateFile.delete()
+                    throw IllegalStateException("UPDATE BLOCKED FOR YOUR PROTECTION. The APK signing certificate does not match the app installed on this phone. Your existing JARVIS app and its data have not been touched. A permanent signing key must be configured before in-place updates can work.")
+                }
+                val currentVersion = if (Build.VERSION.SDK_INT >= 28) currentInfo.longVersionCode else currentInfo.versionCode.toLong()
+                val updateVersion = if (Build.VERSION.SDK_INT >= 28) archive.longVersionCode else archive.versionCode.toLong()
+                if (updateVersion <= currentVersion) throw IllegalStateException("The downloaded APK is not newer than the installed version.")
+                runOnUiThread {
+                    status.text = "● ONLINE"
+                    eventFeed?.text = "UPDATE VERIFIED\nSIGNATURE MATCHED • BUILD $updateVersion"
+                    AlertDialog.Builder(this)
+                        .setTitle("Update verified")
+                        .setMessage("The APK belongs to J.A.R.V.I.S. and its signing certificate matches this installation. Android will now ask you to confirm the update.")
+                        .setPositiveButton("INSTALL") { _, _ -> installVerifiedUpdate(updateFile) }
+                        .setNegativeButton("NOT NOW", null)
+                        .show()
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    status.text = "● ONLINE"
+                    eventFeed?.text = "UPDATE CHECK\nINSTALLATION SAFETY CHECK"
+                    AlertDialog.Builder(this).setTitle("Update not installed")
+                        .setMessage(e.message ?: "The update could not be verified. Your current app remains unchanged.")
                         .setPositiveButton("OK", null)
+                        .setNeutralButton("RELEASE PAGE") { _, _ -> startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(releaseUrl))) }
                         .show()
                 }
             } finally {
                 connection?.disconnect()
             }
         }.start()
+    }
+
+    private fun installVerifiedUpdate(file: File?) {
+        if (file == null || !file.isFile) {
+            show("The verified update file is no longer available. Please check for updates again.")
+            return
+        }
+        if (Build.VERSION.SDK_INT >= 26 && !packageManager.canRequestPackageInstalls()) {
+            AlertDialog.Builder(this).setTitle("Allow JARVIS updates")
+                .setMessage("Android needs your permission to install updates downloaded from the JARVIS release page. Enable 'Allow from this source', return to JARVIS, and check for updates again.")
+                .setPositiveButton("OPEN ANDROID SETTING") { _, _ ->
+                    startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+                }
+                .setNegativeButton("CANCEL", null).show()
+            return
+        }
+        try {
+            val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
+            val install = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(install)
+        } catch (e: Exception) {
+            show("Android could not open the verified installer: " + (e.message ?: "unknown error"))
+        }
     }
 
     private fun refreshWeather(target: TextView) {
@@ -420,12 +537,14 @@ class MainActivity : Activity() {
 
     private fun show(text: String) {
         caption.text = text
+        eventFeed?.text = "JARVIS RESPONSE\n" + text.take(115)
         Speaker.say(text)
     }
 
     private fun ask(t: String) {
         if (t.isBlank()) return
         you.text = "You: $t"
+        eventFeed?.text = "PROCESSING REQUEST\n" + t.take(100)
         hud.mode = 3
         status.text = "● THINKING"
         brain.handle(t) { show(it) }
@@ -542,6 +661,7 @@ class MainActivity : Activity() {
         val key = field("Anthropic API key (only needed if using Anthropic)", store.apiKey, true)
         val nvidiaKey = field("NVIDIA NIM API key", store.nvidiaApiKey, true)
         val nvidiaModel = field("NVIDIA model ID", store.nvidiaModel)
+        val anthropicModel = field("Anthropic model ID", store.anthropicModel)
         val elKey = field("ElevenLabs API key (Jarvis voice)", store.elevenKey, true)
         val vid = field("ElevenLabs voice ID", store.voiceId)
         val spotify = CheckBox(this).apply { text = "Use Spotify for music"; isChecked = store.useSpotify }
@@ -573,6 +693,7 @@ class MainActivity : Activity() {
                 store.aiProvider = provider.text.toString().trim().lowercase(Locale.ROOT)
                 store.nvidiaApiKey = nvidiaKey.text.toString().trim()
                 store.nvidiaModel = nvidiaModel.text.toString().trim()
+                store.anthropicModel = anthropicModel.text.toString().trim()
                 store.elevenKey = elKey.text.toString().trim()
                 store.voiceId = vid.text.toString().trim()
                 store.useSpotify = spotify.isChecked
