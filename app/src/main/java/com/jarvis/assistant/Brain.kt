@@ -143,6 +143,11 @@ class Brain(context: Context, private val store: Store) {
         val cacheSeed = q.lowercase(Locale.ROOT).replace(Regex("[^a-z0-9 ]"), "").trim() +
             "|" + memoryContext().hashCode() + "|" + store.conversation().hashCode()
         val key = cacheSeed.hashCode().toString()
+        store.cached(key)?.let { cached ->
+            store.rememberTurn("user", q)
+            store.rememberTurn("assistant", cached)
+            return reply(cached)
+        }
 
         val selected = store.aiProvider
         val localReady = LocalAi.hasModel(ctx)
