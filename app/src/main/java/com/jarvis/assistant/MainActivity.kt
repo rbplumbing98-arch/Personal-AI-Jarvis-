@@ -366,8 +366,8 @@ class MainActivity : Activity() {
         }
         val name = field("Your name", store.name)
         val area = field("Location area", store.area)
-        val provider = field("AI provider: anthropic or nvidia", store.aiProvider)
-        val key = field("Anthropic API key (optional)", store.apiKey, true)
+        val provider = field("AI provider: nvidia (recommended) or anthropic (optional)", store.aiProvider)
+        val key = field("Anthropic API key (only needed if using Anthropic)", store.apiKey, true)
         val nvidiaKey = field("NVIDIA NIM API key", store.nvidiaApiKey, true)
         val nvidiaModel = field("NVIDIA model ID", store.nvidiaModel)
         val elKey = field("ElevenLabs API key (Jarvis voice)", store.elevenKey, true)
@@ -397,8 +397,8 @@ class MainActivity : Activity() {
             .setPositiveButton("Save") { _, _ ->
                 store.name = name.text.toString().trim()
                 store.area = area.text.toString().trim()
-                store.aiProvider = provider.text.toString().trim().lowercase(Locale.ROOT)
                 store.apiKey = key.text.toString().trim()
+                store.aiProvider = provider.text.toString().trim().lowercase(Locale.ROOT)
                 store.nvidiaApiKey = nvidiaKey.text.toString().trim()
                 store.nvidiaModel = nvidiaModel.text.toString().trim()
                 store.elevenKey = elKey.text.toString().trim()
