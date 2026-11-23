@@ -135,9 +135,9 @@ class MainActivity : Activity() {
 
         val intelligenceRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         val modelReady = LocalAi.hasModel(this)
-        val diagnosticsText = "AI  •  ${store.aiProvider.uppercase(Locale.ROOT)}\\nOFFLINE MODEL  •  ${if (modelReady) "READY" else "NOT INSTALLED"}\\nNETWORK  •  ${if (network) "CONNECTED" else "OFFLINE"}"
+        val diagnosticsText = "AI  •  ${store.aiProvider.uppercase(Locale.ROOT)}\nOFFLINE MODEL  •  ${if (modelReady) "READY" else "NOT INSTALLED"}\nNETWORK  •  ${if (network) "CONNECTED" else "OFFLINE"}"
         intelligenceRow.addView(panel("LEFT CONSOLE  /  DIAGNOSTICS", diagnosticsText), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(5), 0) })
-        intelligenceRow.addView(panel("RIGHT CONSOLE  /  EVENT FEED", "QUANTUM CORE INITIALISED\\nVOICE INTERFACE READY\\nMEMORY STORE LOCAL"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        intelligenceRow.addView(panel("RIGHT CONSOLE  /  EVENT FEED", "QUANTUM CORE INITIALISED\nVOICE INTERFACE READY\nMEMORY STORE LOCAL"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         content.addView(intelligenceRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 0, 0, px(9)) })
 
         val weatherCard = panel("LIVE WEATHER  /  CENTURION", "Connecting to weather feed…")
