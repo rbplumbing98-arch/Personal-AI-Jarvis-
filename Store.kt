@@ -119,6 +119,10 @@ class Store(context: Context) {
         get() = sp.getBoolean("read", false)
         set(v) { sp.edit().putBoolean("read", v).apply() }
 
+    var useChromeSearch: Boolean
+        get() = sp.getBoolean("chrome_search", true)
+        set(v) { sp.edit().putBoolean("chrome_search", v).apply() }
+
     private fun arr(k: String): JSONArray = try { JSONArray(sp.getString(k, "[]")) } catch (e: Exception) { JSONArray() }
     private fun obj(k: String): JSONObject = try { JSONObject(sp.getString(k, "{}")) } catch (e: Exception) { JSONObject() }
     private fun list(k: String): List<String> { val a = arr(k); return (0 until a.length()).map { a.getString(it) } }
