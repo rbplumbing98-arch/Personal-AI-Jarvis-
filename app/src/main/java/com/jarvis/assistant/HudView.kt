@@ -104,7 +104,7 @@ class HudView(context: Context) : View(context) {
         }
         for (i in 0..3) {
             canvas.save()
-            canvas.rotate(rotation * if (i % 2 == 0) 1f else -1f + i*31f, cx, cy)
+            canvas.rotate(rotation * (if (i % 2 == 0) 1f else -1f) + i*31f, cx, cy)
             stroke.color = if (i == 0) paleGold else gold
             stroke.alpha = if (i == 0) 190 else 90
             stroke.strokeWidth = dp(1f)
