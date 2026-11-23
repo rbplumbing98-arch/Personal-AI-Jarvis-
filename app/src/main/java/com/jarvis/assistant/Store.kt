@@ -203,7 +203,6 @@ class Store(context: Context) {
         if (!replaced) next.put(JSONObject().put("id", "mem-${System.currentTimeMillis()}").put("category", category).put("text", clean).put("updatedAt", System.currentTimeMillis()))
         while (next.length() > 300) next.remove(0)
         sp.edit().putString("memory_entries", next.toString()).apply()
-        if (effectiveId == null) addNote(clean)
     }
 
     fun deleteMemory(id: String) {
