@@ -188,24 +188,39 @@ class Store(context: Context) {
     fun saveMemory(id: String?, category: String, text: String) {
         val clean = text.trim()
         if (clean.isBlank()) return
+        val effectiveId = if (id?.startsWith("legacy-") == true) null else id
+        if (id?.startsWith("legacy-") == true) deleteMemory(id)
         val a = arr("memory_entries")
         val next = JSONArray()
         var replaced = false
         for (i in 0 until a.length()) {
             val item = a.optJSONObject(i) ?: continue
-            if (id != null && item.optString("id") == id) {
-                next.put(JSONObject().put("id", id).put("category", category).put("text", clean).put("updatedAt", System.currentTimeMillis()))
+            if (effectiveId != null && item.optString("id") == effectiveId) {
+                next.put(JSONObject().put("id", effectiveId).put("category", category).put("text", clean).put("updatedAt", System.currentTimeMillis()))
                 replaced = true
             } else next.put(item)
         }
         if (!replaced) next.put(JSONObject().put("id", "mem-${System.currentTimeMillis()}").put("category", category).put("text", clean).put("updatedAt", System.currentTimeMillis()))
         while (next.length() > 300) next.remove(0)
         sp.edit().putString("memory_entries", next.toString()).apply()
-        if (id == null) addNote(clean)
+        if (effectiveId == null) addNote(clean)
     }
 
     fun deleteMemory(id: String) {
-        if (id.startsWith("legacy-")) return
+        if (id.startsWith("legacy-note-")) {
+            val index = id.substringAfterLast("-").toIntOrNull() ?: return
+            val values = notes().toMutableList()
+            if (index in values.indices) values.removeAt(index)
+            sp.edit().putString("notes", JSONArray(values).toString()).apply()
+            return
+        }
+        if (id.startsWith("legacy-fact-")) {
+            val index = id.substringAfterLast("-").toIntOrNull() ?: return
+            val values = facts().toMutableList()
+            if (index in values.indices) values.removeAt(index)
+            sp.edit().putString("facts", JSONArray(values).toString()).apply()
+            return
+        }
         val a = arr("memory_entries")
         val next = JSONArray()
         for (i in 0 until a.length()) { val item = a.optJSONObject(i) ?: continue; if (item.optString("id") != id) next.put(item) }
