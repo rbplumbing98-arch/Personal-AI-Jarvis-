@@ -14,6 +14,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.text.InputType
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.Button
@@ -223,7 +224,7 @@ class MainActivity : Activity() {
         val model = if (LocalAi.hasModel(this)) "Installed" else "Not installed"
         val provider = store.aiProvider.uppercase(Locale.ROOT)
         val voiceEngine = if (store.elevenKey.isBlank()) "Android fallback" else "ElevenLabs configured"
-        val details = "AI mode: $provider\nOffline GGUF: $model\nNetwork: \${if (network) "Connected" else "Offline"}\nVoice: $voiceEngine\nSaved notes: \${store.notes().size}"
+        val details = "AI mode: $provider\nOffline GGUF: $model\nNetwork: ${if (network) "Connected" else "Offline"}\nVoice: $voiceEngine\nSaved notes: ${store.notes().size}"
         AlertDialog.Builder(this).setTitle("SYSTEM DIAGNOSTICS").setMessage(details)
             .setPositiveButton("CLOSE", null).setNeutralButton("SETTINGS") { _, _ -> openSettings() }.show()
     }
