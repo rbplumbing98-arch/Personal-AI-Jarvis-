@@ -31,7 +31,7 @@ class JarvisAutoService : MediaBrowserServiceCompat() {
         brain = Brain(this, Store(this))
         voice = VoiceInput(
             this,
-            { text -> brain.handle(text) { Speaker.say(it) } },
+            { text -> brain.handle(text, { Speaker.say(it) }) },
             { },
             { msg -> Speaker.say(msg) }
         )
@@ -49,7 +49,7 @@ class JarvisAutoService : MediaBrowserServiceCompat() {
         session.setCallback(object : MediaSessionCompat.Callback() {
             override fun onPlayFromMediaId(mediaId: String?, extras: Bundle?) { act(mediaId) }
             override fun onPlayFromSearch(query: String?, extras: Bundle?) {
-                if (!query.isNullOrBlank()) brain.handle(query) { Speaker.say(it) }
+                if (!query.isNullOrBlank()) brain.handle(query, { Speaker.say(it) })
             }
         })
         session.isActive = true
@@ -57,7 +57,7 @@ class JarvisAutoService : MediaBrowserServiceCompat() {
     }
 
     private fun act(id: String?) {
-        val say = { text: String -> brain.handle(text) { Speaker.say(it) } }
+        val say = { text: String -> brain.handle(text, { Speaker.say(it) }) }
         when (id) {
             "ask" -> { Speaker.say("Yes?"); handler.postDelayed({ voice?.start() }, 1000) }
             "msgs" -> say("read my messages")
