@@ -687,6 +687,70 @@ class MainActivity : Activity() {
         val anthropicModel = field("Anthropic model ID", store.anthropicModel)
         val elKey = field("ElevenLabs API key (Jarvis voice)", store.elevenKey, true)
         val vid = field("ElevenLabs voice ID", store.voiceId)
+        val browseVoices = Button(this).apply {
+            text = "FIND BRITISH FEMININE VOICES"
+            setOnClickListener {
+                val apiKey = elKey.text.toString().trim()
+                if (apiKey.isBlank()) {
+                    show("Enter your ElevenLabs API key first, then tap Find British Feminine Voices.")
+                    return@setOnClickListener
+                }
+                store.elevenKey = apiKey
+                text = "SEARCHING ELEVENLABS VOICES…"
+                isEnabled = false
+                Thread {
+                    var failure: String? = null
+                    val choices = try {
+                        val connection = (URL("https://api.elevenlabs.io/v2/voices?accent=british&gender=female&language=en&page_size=100&sort=name&sort_direction=asc")
+                            .openConnection() as HttpURLConnection).apply {
+                            requestMethod = "GET"
+                            connectTimeout = 12000
+                            readTimeout = 20000
+                            setRequestProperty("xi-api-key", apiKey)
+                            setRequestProperty("Accept", "application/json")
+                        }
+                        try {
+                            val code = connection.responseCode
+                            if (code !in 200..299) {
+                                val detail = try { connection.errorStream?.bufferedReader()?.readText()?.take(180) } catch (_: Exception) { null }
+                                throw java.io.IOException("ElevenLabs HTTP $code. ${detail ?: "Check API key and account access."}")
+                            }
+                            val json = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
+                            val voices = json.optJSONArray("voices") ?: org.json.JSONArray()
+                            (0 until voices.length()).mapNotNull { index ->
+                                val voice = voices.optJSONObject(index) ?: return@mapNotNull null
+                                val id = voice.optString("voice_id")
+                                val name = voice.optString("name")
+                                if (id.isBlank() || name.isBlank()) null else id to name
+                            }.distinctBy { it.first }
+                        } finally { connection.disconnect() }
+                    } catch (e: Exception) {
+                        failure = e.message ?: "Could not load ElevenLabs voices."
+                        emptyList()
+                    }
+                    runOnUiThread {
+                        text = "FIND BRITISH FEMININE VOICES"
+                        isEnabled = true
+                        if (failure != null) {
+                            show("Voice search failed: $failure")
+                        } else if (choices.isEmpty()) {
+                            show("No British feminine voices are currently available to this ElevenLabs account. Add a suitable voice to My Voices in ElevenLabs, then search again.")
+                        } else {
+                            val names = choices.map { it.second }.toTypedArray()
+                            AlertDialog.Builder(this@MainActivity)
+                                .setTitle("Choose your Friday-inspired voice")
+                                .setItems(names) { _, selected ->
+                                    vid.setText(choices[selected].first)
+                                    voiceStatus.text = "VOICE SYSTEM • ${choices[selected].second} SELECTED — SAVE SETTINGS, THEN TEST ONLINE"
+                                }
+                                .setNegativeButton("Cancel", null)
+                                .show()
+                        }
+                    }
+                }.start()
+            }
+        }
+        box.addView(browseVoices)
         val spotify = CheckBox(this).apply { text = "Use Spotify for music"; isChecked = store.useSpotify }
         val read = CheckBox(this).apply { text = "Read incoming messages aloud"; isChecked = store.readAloud }
         val access = Button(this).apply {
