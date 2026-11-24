@@ -171,7 +171,7 @@ object Speaker {
 
         if (selected == Engine.OFFLINE) {
             if (!ready) {
-                busy = true
+                busy = false
                 onVoiceStatus?.invoke("STARTING LOCAL VOICE ENGINE…")
                 queue.addFirst(request)
                 return
