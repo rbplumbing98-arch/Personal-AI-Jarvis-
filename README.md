@@ -10,3 +10,8 @@ Open J.A.R.V.I.S. Settings, enter your ElevenLabs API key and voice ID, then use
 
 ## Capabilities and limits
 Local commands, notes, saved facts and taught phrases work without an AI API key. Open-ended answers require an optional Anthropic API key and internet access; this is not a local large language model. Speech recognition uses the Android speech provider with en-GB locale. Offline recognition depends on installed language packs. Notification reading requires Notification Access. Media controls depend on Android media sessions. An always-on Hey J.A.R.V.I.S. wake-word engine is not yet implemented.
+
+
+## Aurelia + CastPlay build
+
+This branch adds the Aurelia voice-first visualizer and a CastPlay screen available from the overflow menu. CastPlay uses Google Cast with the default media receiver and accepts direct HTTP(S) media URLs supported by that receiver. DRM-protected services must use their own Cast-enabled apps.
