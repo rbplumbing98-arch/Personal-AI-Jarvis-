@@ -41,7 +41,7 @@ import kotlinx.coroutines.launch
 class MainActivity : Activity() {
     private lateinit var store: Store
     private lateinit var brain: Brain
-    private lateinit var hud: HudView
+    private lateinit var hud: AureliaView
     private lateinit var status: TextView
     private lateinit var caption: TextView
     private lateinit var you: TextView
@@ -87,7 +87,7 @@ class MainActivity : Activity() {
         val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, 0, 0, px(8)) }
         val brand = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         brand.addView(TextView(this).apply { text = "J.A.R.V.I.S."; setTextColor(light); textSize = 21f; letterSpacing = 0.16f; typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL) })
-        brand.addView(TextView(this).apply { text = "QUANTUM CORE  •  PERSONAL AI"; setTextColor(gold); textSize = 8f; letterSpacing = 0.18f })
+        brand.addView(TextView(this).apply { text = "AURELIA  •  PERSONAL AI"; setTextColor(gold); textSize = 8f; letterSpacing = 0.18f })
         top.addView(brand, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         status = TextView(this).apply { text = "● ONLINE"; setTextColor(gold); textSize = 10f; gravity = Gravity.CENTER_VERTICAL }
         top.addView(status)
@@ -101,16 +101,16 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(1)))
 
         val hubLabel = TextView(this).apply {
-            text = "QUANTUM CORE  /  INTELLIGENCE SYSTEM"
+            text = "VOICE INTERFACE  /  INTELLIGENCE SYSTEM"
             setTextColor(gold); textSize = 10f; letterSpacing = 0.24f
             gravity = Gravity.CENTER; setPadding(0, px(12), 0, 0)
         }
         content.addView(hubLabel)
-        hud = HudView(this)
+        hud = AureliaView(this)
         content.addView(hud, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(310))
             .apply { setMargins(0, px(2), 0, 0) })
         content.addView(TextView(this).apply {
-            text = "SYSTEM CORE  •  ACTIVE"; setTextColor(light); textSize = 9f
+            text = "AURELIA  •  ALWAYS READY"; setTextColor(light); textSize = 9f
             letterSpacing = 0.2f; gravity = Gravity.CENTER; setPadding(0, 0, 0, px(8))
         })
 
@@ -238,7 +238,7 @@ class MainActivity : Activity() {
 
 
     private fun showControlMenu() {
-        val items = arrayOf("AI Models", "Memory Centre", "Music & Spotify", "Voice settings",
+        val items = arrayOf("AI Models", "Memory Centre", "CastPlay  •  Cast to TV", "Music & Spotify", "Voice settings",
             "General settings", "Diagnostics", "Connections", "System tools", "Check for updates",
             "Clear conversation context")
         AlertDialog.Builder(this)
@@ -247,12 +247,13 @@ class MainActivity : Activity() {
                 when (which) {
                     0 -> openModelManager()
                     1 -> openMemoryManager()
-                    2 -> ask("play music")
-                    3, 4, 6 -> openSettings()
-                    5 -> showDiagnostics()
-                    7 -> startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
-                    8 -> checkForUpdates()
-                    9 -> clearConversationContext()
+                    2 -> startActivity(Intent(this, CastPlayActivity::class.java))
+                    3 -> ask("play music")
+                    4, 5, 7 -> openSettings()
+                    6 -> showDiagnostics()
+                    8 -> startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+                    9 -> checkForUpdates()
+                    10 -> clearConversationContext()
                 }
             }
             .setNegativeButton("CLOSE", null).show()

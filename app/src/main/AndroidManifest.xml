@@ -19,6 +19,7 @@
         android:label="${appLabel}"
         android:theme="@style/JarvisTheme">
         <meta-data android:name="com.google.android.gms.car.application" android:resource="@xml/automotive_app_desc" />
+        <meta-data android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME" android:value="com.jarvis.assistant.JarvisCastOptionsProvider" />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -26,6 +27,7 @@
             android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/jarvis_file_paths" />
         </provider>
+        <activity android:name=".CastPlayActivity" android:exported="false" android:label="CastPlay" />
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
