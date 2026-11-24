@@ -20,7 +20,6 @@ import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.media.RemoteMediaClient
 import com.google.android.gms.cast.framework.CastOptions
 import com.google.android.gms.cast.framework.OptionsProvider
-import com.google.android.gms.common.images.WebImage
 
 /** Google Cast sender configuration using Google's default media receiver. */
 class JarvisCastOptionsProvider : OptionsProvider {
@@ -89,7 +88,7 @@ class CastPlayActivity : Activity() {
 
         try {
             cast = CastContext.getSharedInstance(this)
-            com.google.android.gms.cast.framework.CastButtonFactory.setUpMediaRouteButton(applicationContext, route)
+            com.google.android.gms.cast.framework.CastButtonFactory.setUpMediaRouteButton(this@CastPlayActivity, route)
         } catch (e: Exception) {
             status?.text = "Google Cast is unavailable on this device: ${e.message ?: "Google Play services may need updating"}"
         }
