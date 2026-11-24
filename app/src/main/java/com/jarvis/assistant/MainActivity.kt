@@ -16,6 +16,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.speech.tts.TextToSpeech
 import android.text.InputType
 import android.view.Gravity
 import android.view.View
@@ -72,7 +73,10 @@ class MainActivity : Activity() {
             }
         }
         Speaker.onVoiceError = { message ->
-            runOnUiThread { if (::voiceStatus.isInitialized) voiceStatus.text = "VOICE FALLBACK • $message" }
+            runOnUiThread { if (::voiceStatus.isInitialized) voiceStatus.text = "VOICE ISSUE • $message" }
+        }
+        Speaker.onVoiceStatus = { message ->
+            runOnUiThread { if (::voiceStatus.isInitialized) voiceStatus.text = "VOICE SYSTEM • $message" }
         }
         Speaker.init(this)
 
@@ -123,7 +127,7 @@ class MainActivity : Activity() {
                 cornerRadius = px(8).toFloat()
             }
         }
-        val voiceLabel = if (store.elevenKey.isNotBlank()) "ELEVEN READY" else "ANDROID TTS"
+        val voiceLabel = if (store.elevenKey.isNotBlank() && store.voiceId.isNotBlank()) "ELEVEN CONFIG" else "LOCAL VOICE"
         indicators.addView(indicator("VOICE", voiceLabel, light),
             LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, px(5), 0) })
         val localReady = LocalAi.hasModel(this)
@@ -162,7 +166,7 @@ class MainActivity : Activity() {
         weatherView?.let { refreshWeather(it) }
 
         voiceStatus = TextView(this).apply {
-            text = if (store.elevenKey.isBlank()) "VOICE SYSTEM  •  Android voice fallback" else "VOICE SYSTEM  •  ElevenLabs configured"
+            text = if (store.elevenKey.isBlank()) "VOICE SYSTEM  •  AUTO / LOCAL VOICE" else "VOICE SYSTEM  •  AUTO / ONLINE CONFIGURED"
             setTextColor(gold); textSize = 9f; setPadding(px(3), px(4), px(3), 0)
         }
         content.addView(voiceStatus)
@@ -689,19 +693,41 @@ class MainActivity : Activity() {
             text = "Grant notification access"
             setOnClickListener { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
         }
-        val testVoice = Button(this).apply {
-            text = "TEST J.A.R.V.I.S. VOICE"
+        fun saveVoiceCredentialsForTest() {
+            store.elevenKey = elKey.text.toString().trim()
+            store.voiceId = vid.text.toString().trim()
+        }
+        val testOnlineVoice = Button(this).apply {
+            text = "TEST ONLINE • ELEVENLABS"
             setOnClickListener {
-                store.elevenKey = elKey.text.toString().trim()
-                store.voiceId = vid.text.toString().trim()
-                voiceStatus.text = "VOICE • Testing ElevenLabs…"
-                Speaker.testVoice()
+                saveVoiceCredentialsForTest()
+                voiceStatus.text = "VOICE SYSTEM • TESTING ONLINE ELEVENLABS…"
+                Speaker.testOnlineVoice()
+            }
+        }
+        val testOfflineVoice = Button(this).apply {
+            text = "TEST OFFLINE • LOCAL FRIDAY"
+            setOnClickListener {
+                voiceStatus.text = "VOICE SYSTEM • TESTING ON-DEVICE VOICE…"
+                Speaker.testOfflineVoice()
+            }
+        }
+        val installOfflineVoice = Button(this).apply {
+            text = "INSTALL / MANAGE OFFLINE VOICE"
+            setOnClickListener {
+                try {
+                    startActivity(Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA))
+                } catch (_: Exception) {
+                    startActivity(Intent(Settings.ACTION_SETTINGS))
+                }
             }
         }
         box.addView(spotify)
         box.addView(read)
         box.addView(access)
-        box.addView(testVoice)
+        box.addView(testOnlineVoice)
+        box.addView(testOfflineVoice)
+        box.addView(installOfflineVoice)
         AlertDialog.Builder(this)
             .setTitle("J.A.R.V.I.S. SETTINGS")
             .setView(ScrollView(this).apply { addView(box) })
@@ -717,7 +743,7 @@ class MainActivity : Activity() {
                 store.voiceId = vid.text.toString().trim()
                 store.useSpotify = spotify.isChecked
                 store.readAloud = read.isChecked
-                voiceStatus.text = if (store.elevenKey.isBlank()) "VOICE • Android fallback active" else "VOICE • ElevenLabs configured"
+                voiceStatus.text = if (store.elevenKey.isBlank()) "VOICE SYSTEM • AUTO / LOCAL VOICE" else "VOICE SYSTEM • AUTO / ONLINE CONFIGURED"
                 show("Settings saved, sir.")
             }
             .setNegativeButton("Cancel", null)
