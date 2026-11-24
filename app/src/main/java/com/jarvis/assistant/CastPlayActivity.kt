@@ -17,6 +17,7 @@ import com.google.android.gms.cast.MediaInfo
 import com.google.android.gms.cast.MediaLoadOptions
 import com.google.android.gms.cast.MediaMetadata
 import com.google.android.gms.cast.framework.CastContext
+import com.google.android.gms.cast.framework.media.RemoteMediaClient
 import com.google.android.gms.cast.framework.CastOptions
 import com.google.android.gms.cast.framework.OptionsProvider
 import com.google.android.gms.common.images.WebImage
@@ -131,7 +132,7 @@ class CastPlayActivity : Activity() {
         text = label; textSize = 10f; isAllCaps = false; setTextColor(pale)
         background = GradientDrawable().apply { setColor(Color.rgb(27, 22, 14)); setStroke(dp(1), gold); cornerRadius = dp(10).toFloat() }
     }
-    private fun withClient(action: (com.google.android.gms.cast.RemoteMediaClient) -> Unit) {
+    private fun withClient(action: (RemoteMediaClient) -> Unit) {
         val client = cast?.sessionManager?.currentCastSession?.remoteMediaClient
         if (client == null) status?.text = "No Cast device is connected." else action(client)
     }
