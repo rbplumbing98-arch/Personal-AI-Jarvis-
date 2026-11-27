@@ -91,7 +91,7 @@ class MainActivity : Activity() {
         val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, 0, 0, px(8)) }
         val brand = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         brand.addView(TextView(this).apply { text = "J.A.R.V.I.S."; setTextColor(light); textSize = 21f; letterSpacing = 0.16f; typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL) })
-        brand.addView(TextView(this).apply { text = "AURELIA  •  PERSONAL AI"; setTextColor(gold); textSize = 8f; letterSpacing = 0.18f })
+        brand.addView(TextView(this).apply { text = "QUANTUM CORE  •  PERSONAL AI"; setTextColor(gold); textSize = 8f; letterSpacing = 0.18f })
         top.addView(brand, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         status = TextView(this).apply { text = "● ONLINE"; setTextColor(gold); textSize = 10f; gravity = Gravity.CENTER_VERTICAL }
         top.addView(status)
@@ -114,7 +114,7 @@ class MainActivity : Activity() {
         content.addView(hud, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(310))
             .apply { setMargins(0, px(2), 0, 0) })
         content.addView(TextView(this).apply {
-            text = "AURELIA  •  ALWAYS READY"; setTextColor(light); textSize = 9f
+            text = "J.A.R.V.I.S.  •  ALWAYS READY"; setTextColor(light); textSize = 9f
             letterSpacing = 0.2f; gravity = Gravity.CENTER; setPadding(0, 0, 0, px(8))
         })
 
@@ -688,11 +688,11 @@ class MainActivity : Activity() {
         val elKey = field("ElevenLabs API key (Jarvis voice)", store.elevenKey, true)
         val vid = field("ElevenLabs voice ID", store.voiceId)
         val browseVoices = Button(this).apply {
-            text = "FIND BRITISH FEMININE VOICES"
+            text = "FIND BRITISH MALE VOICES"
             setOnClickListener {
                 val apiKey = elKey.text.toString().trim()
                 if (apiKey.isBlank()) {
-                    show("Enter your ElevenLabs API key first, then tap Find British Feminine Voices.")
+                    show("Enter your ElevenLabs API key first, then tap Find British Male Voices.")
                     return@setOnClickListener
                 }
                 store.elevenKey = apiKey
@@ -701,7 +701,7 @@ class MainActivity : Activity() {
                 Thread {
                     var failure: String? = null
                     val choices = try {
-                        val connection = (URL("https://api.elevenlabs.io/v2/voices?accent=british&gender=female&language=en&page_size=100&sort=name&sort_direction=asc")
+                        val connection = (URL("https://api.elevenlabs.io/v2/voices?accent=british&gender=male&language=en&page_size=100&sort=name&sort_direction=asc")
                             .openConnection() as HttpURLConnection).apply {
                             requestMethod = "GET"
                             connectTimeout = 12000
@@ -734,11 +734,11 @@ class MainActivity : Activity() {
                         if (failure != null) {
                             show("Voice search failed: $failure")
                         } else if (choices.isEmpty()) {
-                            show("No British feminine voices are currently available to this ElevenLabs account. Add a suitable voice to My Voices in ElevenLabs, then search again.")
+                            show("No British male voices are currently available to this ElevenLabs account. Add a suitable voice to My Voices in ElevenLabs, then search again.")
                         } else {
                             val names = choices.map { it.second }.toTypedArray()
                             AlertDialog.Builder(this@MainActivity)
-                                .setTitle("Choose your Friday-inspired voice")
+                                .setTitle("Choose your J.A.R.V.I.S. voice")
                                 .setItems(names) { _, selected ->
                                     vid.setText(choices[selected].first)
                                     voiceStatus.text = "VOICE SYSTEM • ${choices[selected].second} SELECTED — SAVE SETTINGS, THEN TEST ONLINE"
@@ -770,7 +770,7 @@ class MainActivity : Activity() {
             }
         }
         val testOfflineVoice = Button(this).apply {
-            text = "TEST OFFLINE • LOCAL FRIDAY"
+            text = "TEST OFFLINE • LOCAL J.A.R.V.I.S."
             setOnClickListener {
                 voiceStatus.text = "VOICE SYSTEM • TESTING ON-DEVICE VOICE…"
                 Speaker.testOfflineVoice()
