@@ -170,9 +170,40 @@ class MainActivity : Activity() {
             setTextColor(gold); textSize = 9f; setPadding(px(3), px(4), px(3), 0)
         }
         content.addView(voiceStatus)
-        caption = TextView(this).apply { setTextColor(light); textSize = 15f; minLines = 2; setPadding(px(3), px(8), px(3), px(4)) }
-        you = TextView(this).apply { setTextColor(Color.parseColor("#C99A43")); textSize = 11f; setPadding(px(3), 0, px(3), px(7)) }
-        content.addView(caption); content.addView(you)
+        val conversationPanel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(px(14), px(12), px(14), px(12))
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#0D0C09"))
+                setStroke(px(1), Color.parseColor("#A17A36"))
+                cornerRadius = px(14).toFloat()
+            }
+        }
+        conversationPanel.addView(TextView(this).apply {
+            text = "LIVE TRANSMISSION  /  J.A.R.V.I.S."
+            setTextColor(gold); textSize = 9f; letterSpacing = 0.18f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+        })
+        conversationPanel.addView(View(this).apply { setBackgroundColor(Color.parseColor("#59421F")) },
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(1)).apply {
+                setMargins(0, px(8), 0, px(8))
+            })
+        caption = TextView(this).apply {
+            setTextColor(light); textSize = 16f; minLines = 2
+            typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
+            setLineSpacing(px(3).toFloat(), 1f)
+            setPadding(px(2), px(3), px(2), px(7))
+            text = "Good evening, sir. All systems are standing by."
+        }
+        you = TextView(this).apply {
+            setTextColor(Color.parseColor("#C99A43")); textSize = 11f
+            setPadding(px(2), px(5), px(2), 0)
+        }
+        conversationPanel.addView(caption)
+        conversationPanel.addView(you)
+        content.addView(conversationPanel, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        ).apply { setMargins(0, px(4), 0, px(8)) })
 
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
