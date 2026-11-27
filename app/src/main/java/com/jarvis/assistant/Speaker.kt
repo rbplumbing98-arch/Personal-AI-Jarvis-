@@ -55,7 +55,8 @@ object Speaker {
                     it.locale.language.equals("en", true) && !it.isNetworkConnectionRequired
                 }
                 val preferred = offlineEnglish.sortedWith(
-                    compareByDescending<Voice> { it.locale.country.equals("GB", true) }
+                    compareByDescending<Voice> { it.name.contains("male", ignoreCase = true) }
+                        .thenByDescending { it.locale.country.equals("GB", true) }
                         .thenByDescending { it.quality }
                 ).firstOrNull()
                 if (preferred != null) {
@@ -106,16 +107,16 @@ object Speaker {
     fun say(text: String, flush: Boolean = true) = enqueue(text, Engine.AUTO, flush)
 
     fun testOnlineVoice() = enqueue(
-        "Online voice test. Friday voice system is connected. How may I assist you?",
+        "Online voice test. J.A.R.V.I.S. voice system is connected. How may I assist you?",
         Engine.ONLINE, true
     )
 
     fun testOfflineVoice() = enqueue(
-        "Offline voice test. Friday voice system is running locally on this device.",
+        "Offline voice test. J.A.R.V.I.S. is running locally on this device.",
         Engine.OFFLINE, true
     )
 
-    fun testVoice() = say("Good evening. All systems are online. How may I assist you today?")
+    fun testVoice() = say("Good evening, sir. All systems are online. How may I assist you today?")
 
     private fun enqueue(text: String, engine: Engine, flush: Boolean) {
         if (text.isBlank()) return
