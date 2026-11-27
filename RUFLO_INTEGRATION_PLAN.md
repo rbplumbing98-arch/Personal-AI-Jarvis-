@@ -5,7 +5,7 @@ Status: preparation only. This branch is isolated from `main`; no Android runtim
 ## Repository baseline inspected
 
 - Android application written in Kotlin; Gradle/Android build is the source of the APK.
-- Existing assistant pipeline: `MainActivity` -> `Brain` -> local/offline model and optional NVIDIA NIM / Anthropic providers.
+- Existing assistant pipeline: `MainActivity` -> `Brain`; offline capability currently covers local commands, saved notes/facts, taught phrases and cached answers. Open-ended AI answers call Anthropic when configured. The inspected `Brain.kt` does not show an active local LLM inference path or NVIDIA NIM provider, so those must not be assumed to work.
 - Existing memory and preferences: `Store` (including encrypted API-key storage and saved memories).
 - Existing speech: `Speaker` with ElevenLabs online speech and Android on-device TTS fallback.
 - Existing visual interface: `AureliaView` and the dashboard in `MainActivity`.
@@ -18,7 +18,7 @@ Ruflo is a developer-side agent orchestration harness for Claude Code, Codex and
 
 Official project: https://github.com/ruvnet/ruflo
 
-The official repository's latest release observed during preparation is `v3.80.10`. Do not use a floating `@latest` dependency in a reproducible production setup; pin and verify the selected release before installation.
+The official repository's latest release checked on 2026-11-27 is `v3.80.10` (verified release tag). The project setup will pin this exact version rather than use a floating `@latest` dependency.
 
 ## Proposed two-layer integration
 
@@ -39,8 +39,8 @@ Ruflo configuration and agent instructions must remain separate from the Android
 Do not embed the Ruflo CLI, Node.js runtime, MCP server, or developer credentials in the APK.
 
 Evaluate an app-facing orchestration interface behind a separate, opt-in capability:
-- Keep current local-first command handling and local model as the default.
-- Keep NVIDIA / Anthropic provider selection and the existing ElevenLabs / offline voice paths intact.
+- Keep current offline command handling, saved notes/facts, taught phrases and cached answers as the default.
+- Preserve the currently implemented Anthropic online-answer path and existing ElevenLabs / Android TTS fallback paths. Do not claim NVIDIA NIM or full local LLM inference is active unless code and device tests prove it.
 - Add a typed task interface only if a genuine app use case is demonstrated (for example, research + summarize + verify).
 - Any remote orchestration service must be separately hosted, authenticated, rate-limited, and explicitly enabled by the user. Never expose provider keys or Ruflo/MCP credentials in the Android client.
 - When offline or the service is unavailable, J.A.R.V.I.S. must continue using its existing local brain and commands.
@@ -66,4 +66,4 @@ Evaluate an app-facing orchestration interface behind a separate, opt-in capabil
 
 ## Current implementation state
 
-This document is a safe implementation plan, not a claim that Ruflo has been installed or that multi-agent runtime functionality has been added to the APK.
+This branch will add a pinned, opt-in developer MCP configuration example and repository agent-safety guidance. The actual Ruflo server must be launched by a supported local coding-agent client; this ChatGPT/GitHub connection cannot start processes on the user's PC. No Ruflo runtime or multi-agent functionality is added to the Android APK.
