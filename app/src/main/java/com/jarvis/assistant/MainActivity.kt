@@ -729,7 +729,7 @@ class MainActivity : Activity() {
                         emptyList()
                     }
                     runOnUiThread {
-                        text = "FIND BRITISH FEMININE VOICES"
+                        text = "FIND BRITISH MALE VOICES"
                         isEnabled = true
                         if (failure != null) {
                             show("Voice search failed: $failure")
