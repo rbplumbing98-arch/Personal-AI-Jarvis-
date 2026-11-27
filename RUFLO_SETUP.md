@@ -4,10 +4,10 @@ This is an **optional developer tool**, not an Android app dependency. Ruflo is 
 
 ## Pinned version
 
-The setup example pins Ruflo **3.80.10** (latest official release verified on 2026-11-27). Avoid changing this to `@latest` in a reproducible project setup.
+The setup example pins Ruflo **3.80.9**, the version currently published on npm when checked on 2026-11-27. Avoid changing this to `@latest` in a reproducible project setup.
 
 Official project: https://github.com/ruvnet/ruflo  
-Release: https://github.com/ruvnet/ruflo/releases/tag/v3.80.10
+Published package: https://www.npmjs.com/package/ruflo
 
 ## Requirements
 
@@ -28,7 +28,7 @@ Ruflo is an orchestration harness, not a language model. Model access and any as
 The example launches the pinned server with:
 
 ```bash
-npx --yes ruflo@3.80.10 mcp start
+npx --yes ruflo@3.80.9 mcp start
 ```
 
 The local `.mcp.json` is ignored by Git. Do not add credentials, personal memory exports, signing keys or tokens to it.
@@ -51,4 +51,4 @@ Only enable write-capable agents after reviewing their tools and permissions. Re
 
 ## Verification
 
-The pull request's existing Android workflow is the compatibility gate: Android lint, unit tests and debug APK assembly must pass. A green CI build does not replace testing Ruflo connectivity in a supported local MCP client or testing the APK on a physical Android device.
+The pull request's Android workflow is the compatibility gate: Android lint, unit tests and debug APK assembly must pass. A green CI build does not replace testing Ruflo connectivity in a supported local MCP client or testing the APK on a physical Android device.
